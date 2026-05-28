@@ -1,0 +1,81 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+credentials*.json
+service-account*.json
+client_secret*.json
+secrets/
+.secrets/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.tox/
+.nox/
+.cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Local runtime data
+storage_data/
+uploads/
+media/
+tmp/
+temp/
+logs/
+*.log
+celerybeat-schedule
+celerybeat.pid
+worker.pid
+*.h5
+# Local databases and service volumes
+*.sqlite
+*.sqlite3
+*.db
+pgdata/
+redis-data/
+postgres-data/
+
+# Test reports
+junit.xml
+coverage.xml
+
+# Docker/local overrides
+docker-compose.override.yml
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
