@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Numeric, String, Text, func
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, INTEGER, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,7 +26,11 @@ class Correction(UUIDPKMixin, Base):
     ocr_word_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("ocr_words.id", ondelete="CASCADE"), nullable=True
     )
-    word_indices: Mapped[list[int]] = mapped_column(ARRAY(INTEGER), nullable=False)
+    word_indices: Mapped[list[int] | None] = mapped_column(ARRAY(INTEGER), nullable=True)
+    # Char offsets into `pages.ocr_plain_text` covered by this suggestion — the
+    # primary handle used to apply Keep/Undo onto the Tiptap document.
+    start_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     original_text: Mapped[str] = mapped_column(Text, nullable=False)
     suggested_text: Mapped[str] = mapped_column(Text, nullable=False)

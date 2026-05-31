@@ -1,5 +1,6 @@
 from app.models.audit_log import AuditLog
 from app.models.correction import Correction
+from app.models.denoise_attempt import DenoiseAttempt
 from app.models.document import Document
 from app.models.export import Export
 from app.models.feedback import Feedback
@@ -13,6 +14,7 @@ from app.models.user import User
 __all__ = [
     "AuditLog",
     "Correction",
+    "DenoiseAttempt",
     "Document",
     "Export",
     "Feedback",

@@ -26,4 +26,4 @@ celery_app.conf.update(
 # Import task modules so they register with the app.
 celery_app.autodiscover_tasks(["app.workers"])
 
-from app.workers import denoise_task  # noqa: E402,F401  (register tasks)
+from app.workers import denoise_task, llm_correction_task, ocr_task  # noqa: E402,F401  (register tasks)

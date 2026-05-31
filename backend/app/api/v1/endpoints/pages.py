@@ -1,27 +1,33 @@
 import io
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import RedirectResponse, StreamingResponse
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser
-from app.core.config import settings
-from app.core.exceptions import NotFound, QuotaExceeded, ValidationError
+from app.core.exceptions import NotFound, ValidationError
 from app.database.session import get_db
 from app.models.document import Document
-from app.models.enums import PageStatus, UserRole
+from app.models.enums import PageStatus
 from app.models.page import Page
-from app.schemas.page import PageOut, PageStatusOut
+from app.schemas.page import DenoiseIn, PageOut, PageStatusOut
 from app.storage import get_storage
 from app.workers.denoise_task import denoise_page_task
 
 router = APIRouter()
 
-
-def _allowed_types() -> set[str]:
-    return {t.strip() for t in settings.ALLOWED_IMAGE_TYPES.split(",") if t.strip()}
+# Statuses from which the user is allowed to (re)run denoise. Denoise is a
+# user-triggered, repeatable step — never auto-chained (spec §4).
+_DENOISE_ALLOWED = (
+    PageStatus.uploaded,
+    PageStatus.denoised,
+    PageStatus.ocr_done,
+    PageStatus.llm_done,
+    PageStatus.reviewing,
+    PageStatus.reviewed,
+    PageStatus.failed,
+)
 
 
 def _get_owned_page(page_id: UUID, user, db: Session) -> Page:
@@ -34,72 +40,50 @@ def _get_owned_page(page_id: UUID, user, db: Session) -> Page:
     return page
 
 
-@router.post(
-    "/documents/{doc_id}/pages/upload",
-    status_code=status.HTTP_202_ACCEPTED,
-    response_model=PageOut,
-)
-def upload_page(
-    doc_id: UUID,
+@router.post("/pages/{page_id}/denoise", status_code=status.HTTP_202_ACCEPTED)
+def trigger_denoise(
+    page_id: UUID,
     user: CurrentUser,
-    file: UploadFile = File(...),
+    payload: DenoiseIn | None = None,
     db: Session = Depends(get_db),
-) -> Page:
-    """Upload an image into a workspace; auto-enqueues the denoise task (NOT OCR/LLM)."""
+) -> dict[str, str]:
+    """User TRIGGERS denoise. Repeatable: pass source=current_denoised to
+    "Denoise Again" from the latest result (spec §4.1, §4.3)."""
+    page = _get_owned_page(page_id, user, db)
+    if page.status not in _DENOISE_ALLOWED:
+        raise ValidationError(f"Cannot denoise from status '{page.status.value}'")
+
+    opts = payload or DenoiseIn()
+    source = opts.source
+    # If asked to denoise from the current denoised image but none exists yet,
+    # fall back to the original.
+    if source == "current_denoised" and not page.denoised_url:
+        source = "original"
+
+    page.status = PageStatus.denoising
+    page.processing_error = None
+    db.commit()
+
+    denoise_page_task.delay(str(page.id), source, opts.params)
+    return {"page_id": str(page.id), "status": PageStatus.denoising.value}
+
+
+@router.get("/documents/{doc_id}/pages", response_model=list[PageOut])
+def list_pages(doc_id: UUID, user: CurrentUser, db: Session = Depends(get_db)) -> list[Page]:
     doc = db.get(Document, doc_id)
     if doc is None or doc.user_id != user.id:
         raise NotFound("Document not found")
-
-    if file.content_type not in _allowed_types():
-        raise ValidationError(
-            f"Unsupported file type '{file.content_type}'. Allowed: {settings.ALLOWED_IMAGE_TYPES}"
-        )
-
-    data = file.file.read()
-    size_mb = len(data) / (1024 * 1024)
-    if size_mb > settings.MAX_UPLOAD_SIZE_MB:
-        raise ValidationError(f"File too large (max {settings.MAX_UPLOAD_SIZE_MB} MB)")
-    if not data:
-        raise ValidationError("Empty file")
-
-    if user.role == UserRole.viewer and user.images_used >= settings.VIEWER_MAX_IMAGES:
-        raise QuotaExceeded(f"Viewer image limit reached ({settings.VIEWER_MAX_IMAGES} images)")
-
-    next_page_number = (
-        db.query(func.coalesce(func.max(Page.page_number), 0))
+    return (
+        db.query(Page)
         .filter(Page.document_id == doc_id)
-        .scalar()
-        + 1
+        .order_by(Page.page_number)
+        .all()
     )
 
-    storage = get_storage()
-    stored = storage.upload_image(
-        data,
-        folder=f"documents/{doc_id}/original",
-        filename=f"page_{next_page_number}",
-    )
 
-    page = Page(
-        document_id=doc_id,
-        page_number=next_page_number,
-        cloudinary_public_id=stored.key,
-        original_url=stored.url,
-        file_size_kb=round(stored.bytes_size / 1024),
-        width=stored.width,
-        height=stored.height,
-        status=PageStatus.uploaded,
-    )
-    db.add(page)
-    doc.total_pages = (doc.total_pages or 0) + 1
-    user.images_used = (user.images_used or 0) + 1
-    db.commit()
-    db.refresh(page)
-
-    # Enqueue denoising. With CELERY_TASK_ALWAYS_EAGER=true this runs synchronously.
-    denoise_page_task.delay(str(page.id))
-
-    db.refresh(page)
-    return page
+@router.get("/pages/{page_id}", response_model=PageOut)
+def get_page(page_id: UUID, user: CurrentUser, db: Session = Depends(get_db)) -> Page:
+    return _get_owned_page(page_id, user, db)
 
 
 @router.get("/pages/{page_id}/status", response_model=PageStatusOut)

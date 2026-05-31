@@ -1,0 +1,1955 @@
+id,name,filePath,startLine,endLine,content,description,declaredType
+"Property:backend/alembic/versions/0001_initial.py:revision","revision","backend/alembic/versions/0001_initial.py",13,13,"from sqlalchemy.dialects import postgresql
+
+revision: str = ""0001_initial""
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None","",""
+"Property:backend/alembic/versions/0001_initial.py:down_revision","down_revision","backend/alembic/versions/0001_initial.py",14,14,"
+revision: str = ""0001_initial""
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None","",""
+"Property:backend/alembic/versions/0001_initial.py:branch_labels","branch_labels","backend/alembic/versions/0001_initial.py",15,15,"revision: str = ""0001_initial""
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+","",""
+"Property:backend/alembic/versions/0001_initial.py:depends_on","depends_on","backend/alembic/versions/0001_initial.py",16,16,"down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+","",""
+"Property:backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py:revision","revision","backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py",21,21,"from sqlalchemy.dialects import postgresql
+
+revision: str = ""0002_direct_upload""
+down_revision: Union[str, None] = ""0001_initial""
+branch_labels: Union[str, Sequence[str], None] = None","",""
+"Property:backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py:down_revision","down_revision","backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py",22,22,"
+revision: str = ""0002_direct_upload""
+down_revision: Union[str, None] = ""0001_initial""
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None","",""
+"Property:backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py:branch_labels","branch_labels","backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py",23,23,"revision: str = ""0002_direct_upload""
+down_revision: Union[str, None] = ""0001_initial""
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+","",""
+"Property:backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py:depends_on","depends_on","backend/alembic/versions/0002_direct_upload_layout_ocr_tiptap.py",24,24,"down_revision: Union[str, None] = ""0001_initial""
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+","",""
+"Property:backend/app/ai/llm/schemas.py:CorrectionSuggestion.original","original","backend/app/ai/llm/schemas.py",7,7,"    """"""One LLM-proposed fix for a suspicious OCR span.""""""
+
+    original: str = Field(description=""The original OCR text that needs to be replaced"")
+    suggested: str = Field(description=""The corrected text the LLM proposes"")
+    reason: str = Field(default="""", description=""Short justification for the change"")","","str"
+"Property:backend/app/ai/llm/schemas.py:CorrectionSuggestion.suggested","suggested","backend/app/ai/llm/schemas.py",8,8,"
+    original: str = Field(description=""The original OCR text that needs to be replaced"")
+    suggested: str = Field(description=""The corrected text the LLM proposes"")
+    reason: str = Field(default="""", description=""Short justification for the change"")
+    confidence: float = Field(","","str"
+"Property:backend/app/ai/llm/schemas.py:CorrectionSuggestion.reason","reason","backend/app/ai/llm/schemas.py",9,9,"    original: str = Field(description=""The original OCR text that needs to be replaced"")
+    suggested: str = Field(description=""The corrected text the LLM proposes"")
+    reason: str = Field(default="""", description=""Short justification for the change"")
+    confidence: float = Field(
+        default=0.8,","","str"
+"Property:backend/app/ai/llm/schemas.py:CorrectionSuggestion.confidence","confidence","backend/app/ai/llm/schemas.py",10,15,"    suggested: str = Field(description=""The corrected text the LLM proposes"")
+    reason: str = Field(default="""", description=""Short justification for the change"")
+    confidence: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=1.0,
+        description=""Self-reported confidence (0..1)"",
+    )
+
+","","float"
+"Property:backend/app/ai/llm/schemas.py:CorrectionList.suggestions","suggestions","backend/app/ai/llm/schemas.py",21,21,"    """"""Wrapper so PydanticOutputParser has a single root model.""""""
+
+    suggestions: list[CorrectionSuggestion] = Field(default_factory=list)
+","","list"
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.tree","tree","backend/app/ai/ocr/tesseract_engine.py",77,77,"
+        # ── Group raw tokens into block → paragraph → line → [word dicts]
+        tree: ""OrderedDict[int, OrderedDict[int, OrderedDict[int, list[dict]]]]"" = OrderedDict()
+        n = len(data.get(""text"", []))
+        for i in range(n):","",""
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.plain_parts","plain_parts","backend/app/ai/ocr/tesseract_engine.py",101,101,"
+        # ── Assemble plain_text + offsets while building typed nodes
+        plain_parts: list[str] = []
+        cursor = 0
+        blocks_out: list[OcrBlockNode] = []","",""
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.blocks_out","blocks_out","backend/app/ai/ocr/tesseract_engine.py",103,103,"        plain_parts: list[str] = []
+        cursor = 0
+        blocks_out: list[OcrBlockNode] = []
+        low_conf: list[LowConfidenceWord] = []
+        wid = lid = pid = bid = 0","",""
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.low_conf","low_conf","backend/app/ai/ocr/tesseract_engine.py",104,104,"        cursor = 0
+        blocks_out: list[OcrBlockNode] = []
+        low_conf: list[LowConfidenceWord] = []
+        wid = lid = pid = bid = 0
+        first_para = True","",""
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.para_nodes","para_nodes","backend/app/ai/ocr/tesseract_engine.py",110,110,"        for block_num, paras in tree.items():
+            bid += 1
+            para_nodes: list[OcrParagraphNode] = []
+            block_word_confs: list[float] = []
+","",""
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.block_word_confs","block_word_confs","backend/app/ai/ocr/tesseract_engine.py",111,111,"            bid += 1
+            para_nodes: list[OcrParagraphNode] = []
+            block_word_confs: list[float] = []
+
+            for par_num, lines in paras.items():","",""
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.line_nodes","line_nodes","backend/app/ai/ocr/tesseract_engine.py",115,115,"            for par_num, lines in paras.items():
+                pid += 1
+                line_nodes: list[OcrLineNode] = []
+
+                # Separate paragraphs by a blank line in plain_text.","",""
+"Property:backend/app/ai/ocr/tesseract_engine.py:TesseractLayoutEngine.word_nodes","word_nodes","backend/app/ai/ocr/tesseract_engine.py",133,133,"                    first_line = False
+
+                    word_nodes: list[OcrWordNode] = []
+                    first_word = True
+                    for wd in word_dicts:","",""
+"Property:backend/app/api/deps.py:__all__","__all__","backend/app/api/deps.py",68,75,"
+
+__all__: Sequence[str] = (
+    ""get_current_user"",
+    ""require_roles"",
+    ""get_llm_provider_for_user"",
+    ""CurrentUser"",
+    ""AdminUser"",
+    ""PaidUser"",
+)
+","",""
+"Property:backend/app/api/v1/endpoints/corrections.py:touched","touched","backend/app/api/v1/endpoints/corrections.py",108,108,") -> list[Correction]:
+    """"""Apply Keep / Undo to many corrections at once.""""""
+    touched: list[Correction] = []
+
+    for cid in payload.accept_ids:","",""
+"Property:backend/app/api/v1/endpoints/exports.py:file_url","file_url","backend/app/api/v1/endpoints/exports.py",50,50,"
+    storage = get_storage()
+    file_url: str | None = None
+    if isinstance(storage, CloudinaryStorage):
+        file_url = storage.upload_raw(","",""
+"Property:backend/app/core/config.py:Settings.APP_NAME","APP_NAME","backend/app/core/config.py",10,10,"    model_config = SettingsConfigDict(env_file="".env"", extra=""ignore"", case_sensitive=False)
+
+    APP_NAME: str = ""denoise-backend""
+    APP_ENV: Literal[""development"", ""production"", ""test""] = ""development""
+    DEBUG: bool = True","","str"
+"Property:backend/app/core/config.py:Settings.APP_ENV","APP_ENV","backend/app/core/config.py",11,11,"
+    APP_NAME: str = ""denoise-backend""
+    APP_ENV: Literal[""development"", ""production"", ""test""] = ""development""
+    DEBUG: bool = True
+","","Literal"
+"Property:backend/app/core/config.py:Settings.DEBUG","DEBUG","backend/app/core/config.py",12,12,"    APP_NAME: str = ""denoise-backend""
+    APP_ENV: Literal[""development"", ""production"", ""test""] = ""development""
+    DEBUG: bool = True
+
+    SECRET_KEY: str","","bool"
+"Property:backend/app/core/config.py:Settings.SECRET_KEY","SECRET_KEY","backend/app/core/config.py",14,14,"    DEBUG: bool = True
+
+    SECRET_KEY: str
+    ALGORITHM: str = ""HS256""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30","","str"
+"Property:backend/app/core/config.py:Settings.ALGORITHM","ALGORITHM","backend/app/core/config.py",15,15,"
+    SECRET_KEY: str
+    ALGORITHM: str = ""HS256""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14","","str"
+"Property:backend/app/core/config.py:Settings.ACCESS_TOKEN_EXPIRE_MINUTES","ACCESS_TOKEN_EXPIRE_MINUTES","backend/app/core/config.py",16,16,"    SECRET_KEY: str
+    ALGORITHM: str = ""HS256""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
+","","int"
+"Property:backend/app/core/config.py:Settings.REFRESH_TOKEN_EXPIRE_DAYS","REFRESH_TOKEN_EXPIRE_DAYS","backend/app/core/config.py",17,17,"    ALGORITHM: str = ""HS256""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
+
+    DATABASE_URL: str","","int"
+"Property:backend/app/core/config.py:Settings.DATABASE_URL","DATABASE_URL","backend/app/core/config.py",19,19,"    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
+
+    DATABASE_URL: str
+
+    REDIS_URL: str = ""redis://localhost:6379/0""","","str"
+"Property:backend/app/core/config.py:Settings.REDIS_URL","REDIS_URL","backend/app/core/config.py",21,21,"    DATABASE_URL: str
+
+    REDIS_URL: str = ""redis://localhost:6379/0""
+    CELERY_BROKER_URL: str = ""redis://localhost:6379/1""
+    CELERY_RESULT_BACKEND: str = ""redis://localhost:6379/2""","","str"
+"Property:backend/app/core/config.py:Settings.CELERY_BROKER_URL","CELERY_BROKER_URL","backend/app/core/config.py",22,22,"
+    REDIS_URL: str = ""redis://localhost:6379/0""
+    CELERY_BROKER_URL: str = ""redis://localhost:6379/1""
+    CELERY_RESULT_BACKEND: str = ""redis://localhost:6379/2""
+    # When true, Celery tasks run synchronously in-process (no broker/worker needed).","","str"
+"Property:backend/app/core/config.py:Settings.CELERY_RESULT_BACKEND","CELERY_RESULT_BACKEND","backend/app/core/config.py",23,23,"    REDIS_URL: str = ""redis://localhost:6379/0""
+    CELERY_BROKER_URL: str = ""redis://localhost:6379/1""
+    CELERY_RESULT_BACKEND: str = ""redis://localhost:6379/2""
+    # When true, Celery tasks run synchronously in-process (no broker/worker needed).
+    # Handy for local testing of the denoise pipeline via Swagger/Postman.","","str"
+"Property:backend/app/core/config.py:Settings.CELERY_TASK_ALWAYS_EAGER","CELERY_TASK_ALWAYS_EAGER","backend/app/core/config.py",26,26,"    # When true, Celery tasks run synchronously in-process (no broker/worker needed).
+    # Handy for local testing of the denoise pipeline via Swagger/Postman.
+    CELERY_TASK_ALWAYS_EAGER: bool = False
+
+    CLOUDINARY_CLOUD_NAME: str = """"","","bool"
+"Property:backend/app/core/config.py:Settings.CLOUDINARY_CLOUD_NAME","CLOUDINARY_CLOUD_NAME","backend/app/core/config.py",28,28,"    CELERY_TASK_ALWAYS_EAGER: bool = False
+
+    CLOUDINARY_CLOUD_NAME: str = """"
+    CLOUDINARY_API_KEY: str = """"
+    CLOUDINARY_API_SECRET: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.CLOUDINARY_API_KEY","CLOUDINARY_API_KEY","backend/app/core/config.py",29,29,"
+    CLOUDINARY_CLOUD_NAME: str = """"
+    CLOUDINARY_API_KEY: str = """"
+    CLOUDINARY_API_SECRET: str = """"
+","","str"
+"Property:backend/app/core/config.py:Settings.CLOUDINARY_API_SECRET","CLOUDINARY_API_SECRET","backend/app/core/config.py",30,30,"    CLOUDINARY_CLOUD_NAME: str = """"
+    CLOUDINARY_API_KEY: str = """"
+    CLOUDINARY_API_SECRET: str = """"
+
+    # CORS — comma-separated list of allowed origins for the frontend dev server","","str"
+"Property:backend/app/core/config.py:Settings.CORS_ORIGINS","CORS_ORIGINS","backend/app/core/config.py",33,33,"
+    # CORS — comma-separated list of allowed origins for the frontend dev server
+    CORS_ORIGINS: str = ""http://localhost:3000,http://127.0.0.1:3000""
+
+    # Uploads / storage","","str"
+"Property:backend/app/core/config.py:Settings.MAX_UPLOAD_SIZE_MB","MAX_UPLOAD_SIZE_MB","backend/app/core/config.py",36,36,"
+    # Uploads / storage
+    MAX_UPLOAD_SIZE_MB: int = 20
+    ALLOWED_IMAGE_TYPES: str = ""image/jpeg,image/png,image/webp,image/tiff,image/bmp""
+    # Used by the local-disk storage fallback when Cloudinary is not configured.","","int"
+"Property:backend/app/core/config.py:Settings.ALLOWED_IMAGE_TYPES","ALLOWED_IMAGE_TYPES","backend/app/core/config.py",37,37,"    # Uploads / storage
+    MAX_UPLOAD_SIZE_MB: int = 20
+    ALLOWED_IMAGE_TYPES: str = ""image/jpeg,image/png,image/webp,image/tiff,image/bmp""
+    # Used by the local-disk storage fallback when Cloudinary is not configured.
+    LOCAL_STORAGE_DIR: str = ""storage_data""","","str"
+"Property:backend/app/core/config.py:Settings.LOCAL_STORAGE_DIR","LOCAL_STORAGE_DIR","backend/app/core/config.py",39,39,"    ALLOWED_IMAGE_TYPES: str = ""image/jpeg,image/png,image/webp,image/tiff,image/bmp""
+    # Used by the local-disk storage fallback when Cloudinary is not configured.
+    LOCAL_STORAGE_DIR: str = ""storage_data""
+
+    # Denoising model","","str"
+"Property:backend/app/core/config.py:Settings.DENOISING_IMAGE_SIZE","DENOISING_IMAGE_SIZE","backend/app/core/config.py",42,42,"
+    # Denoising model
+    DENOISING_IMAGE_SIZE: int = 256
+    DENOISING_BATCH_SIZE: int = 8
+    # Optional override; empty -> app/checkpoints/denoising/best_generator.weights.h5","","int"
+"Property:backend/app/core/config.py:Settings.DENOISING_BATCH_SIZE","DENOISING_BATCH_SIZE","backend/app/core/config.py",43,43,"    # Denoising model
+    DENOISING_IMAGE_SIZE: int = 256
+    DENOISING_BATCH_SIZE: int = 8
+    # Optional override; empty -> app/checkpoints/denoising/best_generator.weights.h5
+    DENOISING_WEIGHTS_PATH: str = """"","","int"
+"Property:backend/app/core/config.py:Settings.DENOISING_WEIGHTS_PATH","DENOISING_WEIGHTS_PATH","backend/app/core/config.py",45,45,"    DENOISING_BATCH_SIZE: int = 8
+    # Optional override; empty -> app/checkpoints/denoising/best_generator.weights.h5
+    DENOISING_WEIGHTS_PATH: str = """"
+
+    TESSERACT_CMD: str = ""tesseract""","","str"
+"Property:backend/app/core/config.py:Settings.TESSERACT_CMD","TESSERACT_CMD","backend/app/core/config.py",47,47,"    DENOISING_WEIGHTS_PATH: str = """"
+
+    TESSERACT_CMD: str = ""tesseract""
+    TESSERACT_LANG: str = ""vie+eng""
+    # Page segmentation mode passed via `--psm`. 6 = assume a single uniform","","str"
+"Property:backend/app/core/config.py:Settings.TESSERACT_LANG","TESSERACT_LANG","backend/app/core/config.py",48,48,"
+    TESSERACT_CMD: str = ""tesseract""
+    TESSERACT_LANG: str = ""vie+eng""
+    # Page segmentation mode passed via `--psm`. 6 = assume a single uniform
+    # block of text, which gives much cleaner line breaks for book pages than","","str"
+"Property:backend/app/core/config.py:Settings.TESSERACT_PSM","TESSERACT_PSM","backend/app/core/config.py",52,52,"    # block of text, which gives much cleaner line breaks for book pages than
+    # the default 3 (auto). Override per environment if you OCR mixed layouts.
+    TESSERACT_PSM: int = 6
+
+    OPENAI_API_KEY: str = """"","","int"
+"Property:backend/app/core/config.py:Settings.OPENAI_API_KEY","OPENAI_API_KEY","backend/app/core/config.py",54,54,"    TESSERACT_PSM: int = 6
+
+    OPENAI_API_KEY: str = """"
+    OPENAI_MODEL: str = ""gpt-4o-mini""
+    OPENROUTER_API_KEY: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.OPENAI_MODEL","OPENAI_MODEL","backend/app/core/config.py",55,55,"
+    OPENAI_API_KEY: str = """"
+    OPENAI_MODEL: str = ""gpt-4o-mini""
+    OPENROUTER_API_KEY: str = """"
+    OPENROUTER_BASE_URL: str = ""https://openrouter.ai/api/v1""","","str"
+"Property:backend/app/core/config.py:Settings.OPENROUTER_API_KEY","OPENROUTER_API_KEY","backend/app/core/config.py",56,56,"    OPENAI_API_KEY: str = """"
+    OPENAI_MODEL: str = ""gpt-4o-mini""
+    OPENROUTER_API_KEY: str = """"
+    OPENROUTER_BASE_URL: str = ""https://openrouter.ai/api/v1""
+    # Free model used for the viewer role (kept env-var name for compatibility).","","str"
+"Property:backend/app/core/config.py:Settings.OPENROUTER_BASE_URL","OPENROUTER_BASE_URL","backend/app/core/config.py",57,57,"    OPENAI_MODEL: str = ""gpt-4o-mini""
+    OPENROUTER_API_KEY: str = """"
+    OPENROUTER_BASE_URL: str = ""https://openrouter.ai/api/v1""
+    # Free model used for the viewer role (kept env-var name for compatibility).
+    OPENROUTER_QWEN_MODEL: str = ""nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free""","","str"
+"Property:backend/app/core/config.py:Settings.OPENROUTER_QWEN_MODEL","OPENROUTER_QWEN_MODEL","backend/app/core/config.py",59,59,"    OPENROUTER_BASE_URL: str = ""https://openrouter.ai/api/v1""
+    # Free model used for the viewer role (kept env-var name for compatibility).
+    OPENROUTER_QWEN_MODEL: str = ""nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free""
+    SUSPICIOUS_CONFIDENCE_THRESHOLD: float = 70.0
+","","str"
+"Property:backend/app/core/config.py:Settings.SUSPICIOUS_CONFIDENCE_THRESHOLD","SUSPICIOUS_CONFIDENCE_THRESHOLD","backend/app/core/config.py",60,60,"    # Free model used for the viewer role (kept env-var name for compatibility).
+    OPENROUTER_QWEN_MODEL: str = ""nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free""
+    SUSPICIOUS_CONFIDENCE_THRESHOLD: float = 70.0
+
+    VIEWER_MAX_IMAGES: int = 10","","float"
+"Property:backend/app/core/config.py:Settings.VIEWER_MAX_IMAGES","VIEWER_MAX_IMAGES","backend/app/core/config.py",62,62,"    SUSPICIOUS_CONFIDENCE_THRESHOLD: float = 70.0
+
+    VIEWER_MAX_IMAGES: int = 10
+    VIEWER_MAX_WORKSPACES: int = 2
+","","int"
+"Property:backend/app/core/config.py:Settings.VIEWER_MAX_WORKSPACES","VIEWER_MAX_WORKSPACES","backend/app/core/config.py",63,63,"
+    VIEWER_MAX_IMAGES: int = 10
+    VIEWER_MAX_WORKSPACES: int = 2
+
+    VNPAY_TMN_CODE: str = """"","","int"
+"Property:backend/app/core/config.py:Settings.VNPAY_TMN_CODE","VNPAY_TMN_CODE","backend/app/core/config.py",65,65,"    VIEWER_MAX_WORKSPACES: int = 2
+
+    VNPAY_TMN_CODE: str = """"
+    VNPAY_HASH_SECRET: str = """"
+    VNPAY_URL: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.VNPAY_HASH_SECRET","VNPAY_HASH_SECRET","backend/app/core/config.py",66,66,"
+    VNPAY_TMN_CODE: str = """"
+    VNPAY_HASH_SECRET: str = """"
+    VNPAY_URL: str = """"
+    MOMO_PARTNER_CODE: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.VNPAY_URL","VNPAY_URL","backend/app/core/config.py",67,67,"    VNPAY_TMN_CODE: str = """"
+    VNPAY_HASH_SECRET: str = """"
+    VNPAY_URL: str = """"
+    MOMO_PARTNER_CODE: str = """"
+    MOMO_ACCESS_KEY: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.MOMO_PARTNER_CODE","MOMO_PARTNER_CODE","backend/app/core/config.py",68,68,"    VNPAY_HASH_SECRET: str = """"
+    VNPAY_URL: str = """"
+    MOMO_PARTNER_CODE: str = """"
+    MOMO_ACCESS_KEY: str = """"
+    MOMO_SECRET_KEY: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.MOMO_ACCESS_KEY","MOMO_ACCESS_KEY","backend/app/core/config.py",69,69,"    VNPAY_URL: str = """"
+    MOMO_PARTNER_CODE: str = """"
+    MOMO_ACCESS_KEY: str = """"
+    MOMO_SECRET_KEY: str = """"
+    STRIPE_API_KEY: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.MOMO_SECRET_KEY","MOMO_SECRET_KEY","backend/app/core/config.py",70,70,"    MOMO_PARTNER_CODE: str = """"
+    MOMO_ACCESS_KEY: str = """"
+    MOMO_SECRET_KEY: str = """"
+    STRIPE_API_KEY: str = """"
+    STRIPE_WEBHOOK_SECRET: str = """"","","str"
+"Property:backend/app/core/config.py:Settings.STRIPE_API_KEY","STRIPE_API_KEY","backend/app/core/config.py",71,71,"    MOMO_ACCESS_KEY: str = """"
+    MOMO_SECRET_KEY: str = """"
+    STRIPE_API_KEY: str = """"
+    STRIPE_WEBHOOK_SECRET: str = """"
+","","str"
+"Property:backend/app/core/config.py:Settings.STRIPE_WEBHOOK_SECRET","STRIPE_WEBHOOK_SECRET","backend/app/core/config.py",72,72,"    MOMO_SECRET_KEY: str = """"
+    STRIPE_API_KEY: str = """"
+    STRIPE_WEBHOOK_SECRET: str = """"
+
+","","str"
+"Property:backend/app/database/base.py:UUIDPKMixin.id","id","backend/app/database/base.py",13,15,"
+class UUIDPKMixin:
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+","","Mapped"
+"Property:backend/app/database/base.py:TimestampMixin.created_at","created_at","backend/app/database/base.py",19,21,"
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),","","Mapped"
+"Property:backend/app/database/base.py:TimestampMixin.updated_at","updated_at","backend/app/database/base.py",22,27,"        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.id","id","backend/app/models/audit_log.py",14,14,"    __tablename__ = ""audit_logs""
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    actor_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""SET NULL""), nullable=True","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.actor_id","actor_id","backend/app/models/audit_log.py",15,17,"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    actor_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""SET NULL""), nullable=True
+    )
+    action: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.action","action","backend/app/models/audit_log.py",18,18,"        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""SET NULL""), nullable=True
+    )
+    action: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.target_type","target_type","backend/app/models/audit_log.py",19,19,"    )
+    action: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(""metadata"", JSONB, nullable=True)","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.target_id","target_id","backend/app/models/audit_log.py",20,20,"    action: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(""metadata"", JSONB, nullable=True)
+    ip: Mapped[str | None] = mapped_column(INET, nullable=True)","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.metadata_","metadata_","backend/app/models/audit_log.py",21,21,"    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(""metadata"", JSONB, nullable=True)
+    ip: Mapped[str | None] = mapped_column(INET, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.ip","ip","backend/app/models/audit_log.py",22,22,"    target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(""metadata"", JSONB, nullable=True)
+    ip: Mapped[str | None] = mapped_column(INET, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True","","Mapped"
+"Property:backend/app/models/audit_log.py:AuditLog.created_at","created_at","backend/app/models/audit_log.py",23,25,"    metadata_: Mapped[dict[str, Any] | None] = mapped_column(""metadata"", JSONB, nullable=True)
+    ip: Mapped[str | None] = mapped_column(INET, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+","","Mapped"
+"Property:backend/app/models/correction.py:Correction.page_id","page_id","backend/app/models/correction.py",22,24,"    __table_args__ = (Index(""ix_corrections_page_status"", ""page_id"", ""status""),)
+
+    page_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""pages.id"", ondelete=""CASCADE""), nullable=False
+    )
+    ocr_word_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey(""ocr_words.id"", ondelete=""CASCADE""), nullable=True","","Mapped"
+"Property:backend/app/models/correction.py:Correction.ocr_word_id","ocr_word_id","backend/app/models/correction.py",25,27,"        PG_UUID(as_uuid=True), ForeignKey(""pages.id"", ondelete=""CASCADE""), nullable=False
+    )
+    ocr_word_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey(""ocr_words.id"", ondelete=""CASCADE""), nullable=True
+    )
+    word_indices: Mapped[list[int] | None] = mapped_column(ARRAY(INTEGER), nullable=True)
+    # Char offsets into `pages.ocr_plain_text` covered by this suggestion — the","","Mapped"
+"Property:backend/app/models/correction.py:Correction.word_indices","word_indices","backend/app/models/correction.py",28,28,"        BigInteger, ForeignKey(""ocr_words.id"", ondelete=""CASCADE""), nullable=True
+    )
+    word_indices: Mapped[list[int] | None] = mapped_column(ARRAY(INTEGER), nullable=True)
+    # Char offsets into `pages.ocr_plain_text` covered by this suggestion — the
+    # primary handle used to apply Keep/Undo onto the Tiptap document.","","Mapped"
+"Property:backend/app/models/correction.py:Correction.start_offset","start_offset","backend/app/models/correction.py",31,31,"    # Char offsets into `pages.ocr_plain_text` covered by this suggestion — the
+    # primary handle used to apply Keep/Undo onto the Tiptap document.
+    start_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+","","Mapped"
+"Property:backend/app/models/correction.py:Correction.end_offset","end_offset","backend/app/models/correction.py",32,32,"    # primary handle used to apply Keep/Undo onto the Tiptap document.
+    start_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    original_text: Mapped[str] = mapped_column(Text, nullable=False)","","Mapped"
+"Property:backend/app/models/correction.py:Correction.original_text","original_text","backend/app/models/correction.py",34,34,"    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    original_text: Mapped[str] = mapped_column(Text, nullable=False)
+    suggested_text: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)","","Mapped"
+"Property:backend/app/models/correction.py:Correction.suggested_text","suggested_text","backend/app/models/correction.py",35,35,"
+    original_text: Mapped[str] = mapped_column(Text, nullable=False)
+    suggested_text: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+","","Mapped"
+"Property:backend/app/models/correction.py:Correction.reason","reason","backend/app/models/correction.py",36,36,"    original_text: Mapped[str] = mapped_column(Text, nullable=False)
+    suggested_text: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    llm_provider: Mapped[LLMProvider] = mapped_column(","","Mapped"
+"Property:backend/app/models/correction.py:Correction.llm_provider","llm_provider","backend/app/models/correction.py",38,40,"    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    llm_provider: Mapped[LLMProvider] = mapped_column(
+        Enum(LLMProvider, name=""llm_provider""), nullable=False
+    )
+    llm_model: Mapped[str] = mapped_column(String(100), nullable=False)
+    confidence_score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)","","Mapped"
+"Property:backend/app/models/correction.py:Correction.llm_model","llm_model","backend/app/models/correction.py",41,41,"        Enum(LLMProvider, name=""llm_provider""), nullable=False
+    )
+    llm_model: Mapped[str] = mapped_column(String(100), nullable=False)
+    confidence_score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+","","Mapped"
+"Property:backend/app/models/correction.py:Correction.confidence_score","confidence_score","backend/app/models/correction.py",42,42,"    )
+    llm_model: Mapped[str] = mapped_column(String(100), nullable=False)
+    confidence_score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+
+    status: Mapped[CorrectionStatus] = mapped_column(","","Mapped"
+"Property:backend/app/models/correction.py:Correction.status","status","backend/app/models/correction.py",44,48,"    confidence_score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+
+    status: Mapped[CorrectionStatus] = mapped_column(
+        Enum(CorrectionStatus, name=""correction_status""),
+        default=CorrectionStatus.pending,
+        nullable=False,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[UUID | None] = mapped_column(","","Mapped"
+"Property:backend/app/models/correction.py:Correction.reviewed_at","reviewed_at","backend/app/models/correction.py",49,49,"        nullable=False,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""SET NULL""), nullable=True","","Mapped"
+"Property:backend/app/models/correction.py:Correction.reviewed_by","reviewed_by","backend/app/models/correction.py",50,52,"    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""SET NULL""), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/correction.py:Correction.created_at","created_at","backend/app/models/correction.py",54,56,"    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""corrections"")","","Mapped"
+"Property:backend/app/models/correction.py:Correction.page","page","backend/app/models/correction.py",58,58,"    )
+
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""corrections"")
+    ocr_word: Mapped[""OcrWord | None""] = relationship(""OcrWord"", back_populates=""corrections"")
+","","Mapped"
+"Property:backend/app/models/correction.py:Correction.ocr_word","ocr_word","backend/app/models/correction.py",59,59,"
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""corrections"")
+    ocr_word: Mapped[""OcrWord | None""] = relationship(""OcrWord"", back_populates=""corrections"")
+","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.page_id","page_id","backend/app/models/denoise_attempt.py",23,28,"    __tablename__ = ""denoise_attempts""
+
+    page_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""pages.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.version","version","backend/app/models/denoise_attempt.py",29,29,"        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.source_image_url","source_image_url","backend/app/models/denoise_attempt.py",30,30,"    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_cloudinary_public_id: Mapped[str | None] = mapped_column(Text, nullable=True)","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.output_image_url","output_image_url","backend/app/models/denoise_attempt.py",31,31,"    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_cloudinary_public_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    params_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.output_cloudinary_public_id","output_cloudinary_public_id","backend/app/models/denoise_attempt.py",32,32,"    source_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_cloudinary_public_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    params_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.params_json","params_json","backend/app/models/denoise_attempt.py",33,33,"    output_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_cloudinary_public_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    params_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.created_at","created_at","backend/app/models/denoise_attempt.py",35,37,"    params_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""denoise_attempts"")","","Mapped"
+"Property:backend/app/models/denoise_attempt.py:DenoiseAttempt.page","page","backend/app/models/denoise_attempt.py",39,39,"    )
+
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""denoise_attempts"")
+","","Mapped"
+"Property:backend/app/models/document.py:Document.user_id","user_id","backend/app/models/document.py",23,28,"    __tablename__ = ""documents""
+
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""users.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)","","Mapped"
+"Property:backend/app/models/document.py:Document.title","title","backend/app/models/document.py",29,29,"        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+","","Mapped"
+"Property:backend/app/models/document.py:Document.description","description","backend/app/models/document.py",30,30,"    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    status: Mapped[DocumentStatus] = mapped_column(","","Mapped"
+"Property:backend/app/models/document.py:Document.status","status","backend/app/models/document.py",32,37,"    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    status: Mapped[DocumentStatus] = mapped_column(
+        Enum(DocumentStatus, name=""document_status""),
+        default=DocumentStatus.draft,
+        nullable=False,
+        index=True,
+    )
+
+    total_pages: Mapped[int] = mapped_column(Integer, default=0, nullable=False)","","Mapped"
+"Property:backend/app/models/document.py:Document.total_pages","total_pages","backend/app/models/document.py",39,39,"    )
+
+    total_pages: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    ui_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)","","Mapped"
+"Property:backend/app/models/document.py:Document.ui_state","ui_state","backend/app/models/document.py",41,41,"    total_pages: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    ui_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)","","Mapped"
+"Property:backend/app/models/document.py:Document.last_opened_at","last_opened_at","backend/app/models/document.py",43,43,"    ui_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    owner: Mapped[""User""] = relationship(","","Mapped"
+"Property:backend/app/models/document.py:Document.owner","owner","backend/app/models/document.py",45,47,"    last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    owner: Mapped[""User""] = relationship(
+        ""User"", back_populates=""documents"", foreign_keys=[user_id]
+    )
+    pages: Mapped[list[""Page""]] = relationship(
+        ""Page"", back_populates=""document"", cascade=""all, delete-orphan""","","Mapped"
+"Property:backend/app/models/document.py:Document.pages","pages","backend/app/models/document.py",48,50,"        ""User"", back_populates=""documents"", foreign_keys=[user_id]
+    )
+    pages: Mapped[list[""Page""]] = relationship(
+        ""Page"", back_populates=""document"", cascade=""all, delete-orphan""
+    )
+    feedbacks: Mapped[list[""Feedback""]] = relationship(
+        ""Feedback"", back_populates=""document"", cascade=""all, delete-orphan""","","Mapped"
+"Property:backend/app/models/document.py:Document.feedbacks","feedbacks","backend/app/models/document.py",51,53,"        ""Page"", back_populates=""document"", cascade=""all, delete-orphan""
+    )
+    feedbacks: Mapped[list[""Feedback""]] = relationship(
+        ""Feedback"", back_populates=""document"", cascade=""all, delete-orphan""
+    )
+    exports: Mapped[list[""Export""]] = relationship(
+        ""Export"", back_populates=""document"", cascade=""all, delete-orphan""","","Mapped"
+"Property:backend/app/models/document.py:Document.exports","exports","backend/app/models/document.py",54,56,"        ""Feedback"", back_populates=""document"", cascade=""all, delete-orphan""
+    )
+    exports: Mapped[list[""Export""]] = relationship(
+        ""Export"", back_populates=""document"", cascade=""all, delete-orphan""
+    )
+","","Mapped"
+"Property:backend/app/models/export.py:Export.document_id","document_id","backend/app/models/export.py",18,23,"    __tablename__ = ""exports""
+
+    document_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""documents.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""CASCADE""), nullable=False","","Mapped"
+"Property:backend/app/models/export.py:Export.user_id","user_id","backend/app/models/export.py",24,26,"        index=True,
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""CASCADE""), nullable=False
+    )
+    format: Mapped[ExportFormat] = mapped_column(
+        Enum(ExportFormat, name=""export_format""), nullable=False","","Mapped"
+"Property:backend/app/models/export.py:Export.format","format","backend/app/models/export.py",27,29,"        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""CASCADE""), nullable=False
+    )
+    format: Mapped[ExportFormat] = mapped_column(
+        Enum(ExportFormat, name=""export_format""), nullable=False
+    )
+    file_url: Mapped[str] = mapped_column(Text, nullable=False)
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)","","Mapped"
+"Property:backend/app/models/export.py:Export.file_url","file_url","backend/app/models/export.py",30,30,"        Enum(ExportFormat, name=""export_format""), nullable=False
+    )
+    file_url: Mapped[str] = mapped_column(Text, nullable=False)
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/export.py:Export.file_size_kb","file_size_kb","backend/app/models/export.py",31,31,"    )
+    file_url: Mapped[str] = mapped_column(Text, nullable=False)
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False","","Mapped"
+"Property:backend/app/models/export.py:Export.created_at","created_at","backend/app/models/export.py",32,34,"    file_url: Mapped[str] = mapped_column(Text, nullable=False)
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    document: Mapped[""Document""] = relationship(""Document"", back_populates=""exports"")","","Mapped"
+"Property:backend/app/models/export.py:Export.document","document","backend/app/models/export.py",36,36,"    )
+
+    document: Mapped[""Document""] = relationship(""Document"", back_populates=""exports"")
+","","Mapped"
+"Property:backend/app/models/feedback.py:Feedback.document_id","document_id","backend/app/models/feedback.py",16,21,"    __tablename__ = ""feedback""
+
+    document_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""documents.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    page_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""pages.id"", ondelete=""CASCADE""), nullable=True","","Mapped"
+"Property:backend/app/models/feedback.py:Feedback.page_id","page_id","backend/app/models/feedback.py",22,24,"        index=True,
+    )
+    page_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""pages.id"", ondelete=""CASCADE""), nullable=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""CASCADE""), nullable=False","","Mapped"
+"Property:backend/app/models/feedback.py:Feedback.user_id","user_id","backend/app/models/feedback.py",25,27,"        PG_UUID(as_uuid=True), ForeignKey(""pages.id"", ondelete=""CASCADE""), nullable=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""CASCADE""), nullable=False
+    )
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+","","Mapped"
+"Property:backend/app/models/feedback.py:Feedback.note","note","backend/app/models/feedback.py",28,28,"        PG_UUID(as_uuid=True), ForeignKey(""users.id"", ondelete=""CASCADE""), nullable=False
+    )
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+
+    document: Mapped[""Document""] = relationship(""Document"", back_populates=""feedbacks"")","","Mapped"
+"Property:backend/app/models/feedback.py:Feedback.document","document","backend/app/models/feedback.py",30,30,"    note: Mapped[str] = mapped_column(Text, nullable=False)
+
+    document: Mapped[""Document""] = relationship(""Document"", back_populates=""feedbacks"")
+","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.id","id","backend/app/models/ocr_word.py",22,22,"    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    page_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""pages.id"", ondelete=""CASCADE""), nullable=False","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.page_id","page_id","backend/app/models/ocr_word.py",23,25,"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    page_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey(""pages.id"", ondelete=""CASCADE""), nullable=False
+    )
+
+    word_index: Mapped[int] = mapped_column(Integer, nullable=False)","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.word_index","word_index","backend/app/models/ocr_word.py",27,27,"    )
+
+    word_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.text","text","backend/app/models/ocr_word.py",28,28,"
+    word_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    bbox: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.confidence","confidence","backend/app/models/ocr_word.py",29,29,"    word_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    bbox: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    line_number: Mapped[int | None] = mapped_column(Integer, nullable=True)","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.bbox","bbox","backend/app/models/ocr_word.py",30,30,"    text: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    bbox: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    line_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_suspicious: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.line_number","line_number","backend/app/models/ocr_word.py",31,31,"    confidence: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    bbox: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    line_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_suspicious: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Char offsets of this word inside `pages.ocr_plain_text` — used to map LLM","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.is_suspicious","is_suspicious","backend/app/models/ocr_word.py",32,32,"    bbox: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    line_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_suspicious: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Char offsets of this word inside `pages.ocr_plain_text` — used to map LLM
+    # suggestions onto Tiptap text spans.","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.start_offset","start_offset","backend/app/models/ocr_word.py",35,35,"    # Char offsets of this word inside `pages.ocr_plain_text` — used to map LLM
+    # suggestions onto Tiptap text spans.
+    start_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.end_offset","end_offset","backend/app/models/ocr_word.py",36,36,"    # suggestions onto Tiptap text spans.
+    start_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.created_at","created_at","backend/app/models/ocr_word.py",38,40,"    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""ocr_words"")","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.page","page","backend/app/models/ocr_word.py",42,42,"    )
+
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""ocr_words"")
+    corrections: Mapped[list[""Correction""]] = relationship(
+        ""Correction"",","","Mapped"
+"Property:backend/app/models/ocr_word.py:OcrWord.corrections","corrections","backend/app/models/ocr_word.py",43,47,"
+    page: Mapped[""Page""] = relationship(""Page"", back_populates=""ocr_words"")
+    corrections: Mapped[list[""Correction""]] = relationship(
+        ""Correction"",
+        back_populates=""ocr_word"",
+        cascade=""all, delete-orphan"",
+    )
+","","Mapped"
+"Property:backend/app/models/page.py:Page.document_id","document_id","backend/app/models/page.py",22,27,"    __table_args__ = (UniqueConstraint(""document_id"", ""page_number"", name=""uq_pages_doc_pageno""),)
+
+    document_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""documents.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+","","Mapped"
+"Property:backend/app/models/page.py:Page.page_number","page_number","backend/app/models/page.py",28,28,"        index=True,
+    )
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # `cloudinary_public_id` holds the ORIGINAL image public_id.","","Mapped"
+"Property:backend/app/models/page.py:Page.cloudinary_public_id","cloudinary_public_id","backend/app/models/page.py",31,31,"
+    # `cloudinary_public_id` holds the ORIGINAL image public_id.
+    cloudinary_public_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    original_url: Mapped[str] = mapped_column(Text, nullable=False)
+    # `denoised_url` always points at the CURRENT denoised image (overwritten on","","Mapped"
+"Property:backend/app/models/page.py:Page.original_url","original_url","backend/app/models/page.py",32,32,"    # `cloudinary_public_id` holds the ORIGINAL image public_id.
+    cloudinary_public_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    original_url: Mapped[str] = mapped_column(Text, nullable=False)
+    # `denoised_url` always points at the CURRENT denoised image (overwritten on
+    # each ""Denoise Again"" — history only keeps the latest, per spec §5).","","Mapped"
+"Property:backend/app/models/page.py:Page.denoised_url","denoised_url","backend/app/models/page.py",35,35,"    # `denoised_url` always points at the CURRENT denoised image (overwritten on
+    # each ""Denoise Again"" — history only keeps the latest, per spec §5).
+    denoised_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_denoised_cloudinary_public_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True","","Mapped"
+"Property:backend/app/models/page.py:Page.current_denoised_cloudinary_public_id","current_denoised_cloudinary_public_id","backend/app/models/page.py",36,38,"    # each ""Denoise Again"" — history only keeps the latest, per spec §5).
+    denoised_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_denoised_cloudinary_public_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    denoise_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+","","Mapped"
+"Property:backend/app/models/page.py:Page.denoise_version","denoise_version","backend/app/models/page.py",39,39,"        String(255), nullable=True
+    )
+    denoise_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)","","Mapped"
+"Property:backend/app/models/page.py:Page.file_size_kb","file_size_kb","backend/app/models/page.py",41,41,"    denoise_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)","","Mapped"
+"Property:backend/app/models/page.py:Page.width","width","backend/app/models/page.py",42,42,"
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+","","Mapped"
+"Property:backend/app/models/page.py:Page.height","height","backend/app/models/page.py",43,43,"    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Document-layout OCR result (spec §6.2): block → paragraph → line → word.","","Mapped"
+"Property:backend/app/models/page.py:Page.ocr_document_json","ocr_document_json","backend/app/models/page.py",46,46,"
+    # Document-layout OCR result (spec §6.2): block → paragraph → line → word.
+    ocr_document_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    ocr_plain_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tiptap ProseMirror document used by the frontend editor (spec §7-§8).","","Mapped"
+"Property:backend/app/models/page.py:Page.ocr_plain_text","ocr_plain_text","backend/app/models/page.py",47,47,"    # Document-layout OCR result (spec §6.2): block → paragraph → line → word.
+    ocr_document_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    ocr_plain_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tiptap ProseMirror document used by the frontend editor (spec §7-§8).
+    tiptap_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)","","Mapped"
+"Property:backend/app/models/page.py:Page.tiptap_json","tiptap_json","backend/app/models/page.py",49,49,"    ocr_plain_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tiptap ProseMirror document used by the frontend editor (spec §7-§8).
+    tiptap_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Final reviewed text (OCR + kept LLM corrections + manual edits) used by export.
+    final_text: Mapped[str | None] = mapped_column(Text, nullable=True)","","Mapped"
+"Property:backend/app/models/page.py:Page.final_text","final_text","backend/app/models/page.py",51,51,"    tiptap_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Final reviewed text (OCR + kept LLM corrections + manual edits) used by export.
+    final_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    status: Mapped[PageStatus] = mapped_column(","","Mapped"
+"Property:backend/app/models/page.py:Page.status","status","backend/app/models/page.py",53,58,"    final_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    status: Mapped[PageStatus] = mapped_column(
+        Enum(PageStatus, name=""page_status""),
+        default=PageStatus.uploaded,
+        nullable=False,
+        index=True,
+    )
+    processing_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)","","Mapped"
+"Property:backend/app/models/page.py:Page.processing_error","processing_error","backend/app/models/page.py",59,59,"        index=True,
+    )
+    processing_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+","","Mapped"
+"Property:backend/app/models/page.py:Page.completed_at","completed_at","backend/app/models/page.py",60,60,"    )
+    processing_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    document: Mapped[""Document""] = relationship(""Document"", back_populates=""pages"")","","Mapped"
+"Property:backend/app/models/page.py:Page.document","document","backend/app/models/page.py",62,62,"    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    document: Mapped[""Document""] = relationship(""Document"", back_populates=""pages"")
+    ocr_words: Mapped[list[""OcrWord""]] = relationship(
+        ""OcrWord"", back_populates=""page"", cascade=""all, delete-orphan""","","Mapped"
+"Property:backend/app/models/page.py:Page.ocr_words","ocr_words","backend/app/models/page.py",63,65,"
+    document: Mapped[""Document""] = relationship(""Document"", back_populates=""pages"")
+    ocr_words: Mapped[list[""OcrWord""]] = relationship(
+        ""OcrWord"", back_populates=""page"", cascade=""all, delete-orphan""
+    )
+    corrections: Mapped[list[""Correction""]] = relationship(
+        ""Correction"", back_populates=""page"", cascade=""all, delete-orphan""","","Mapped"
+"Property:backend/app/models/page.py:Page.corrections","corrections","backend/app/models/page.py",66,68,"        ""OcrWord"", back_populates=""page"", cascade=""all, delete-orphan""
+    )
+    corrections: Mapped[list[""Correction""]] = relationship(
+        ""Correction"", back_populates=""page"", cascade=""all, delete-orphan""
+    )
+    denoise_attempts: Mapped[list[""DenoiseAttempt""]] = relationship(
+        ""DenoiseAttempt"", back_populates=""page"", cascade=""all, delete-orphan""","","Mapped"
+"Property:backend/app/models/page.py:Page.denoise_attempts","denoise_attempts","backend/app/models/page.py",69,71,"        ""Correction"", back_populates=""page"", cascade=""all, delete-orphan""
+    )
+    denoise_attempts: Mapped[list[""DenoiseAttempt""]] = relationship(
+        ""DenoiseAttempt"", back_populates=""page"", cascade=""all, delete-orphan""
+    )
+","","Mapped"
+"Property:backend/app/models/payment.py:Payment.user_id","user_id","backend/app/models/payment.py",15,20,"    __tablename__ = ""payments""
+
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""users.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    subscription_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),","","Mapped"
+"Property:backend/app/models/payment.py:Payment.subscription_id","subscription_id","backend/app/models/payment.py",21,25,"        index=True,
+    )
+    subscription_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""user_subscriptions.id"", ondelete=""SET NULL""),
+        nullable=True,
+    )
+
+    gateway: Mapped[PaymentGateway] = mapped_column(","","Mapped"
+"Property:backend/app/models/payment.py:Payment.gateway","gateway","backend/app/models/payment.py",27,29,"    )
+
+    gateway: Mapped[PaymentGateway] = mapped_column(
+        Enum(PaymentGateway, name=""payment_gateway""), nullable=False
+    )
+    gateway_txn_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    amount_vnd: Mapped[int] = mapped_column(Integer, nullable=False)","","Mapped"
+"Property:backend/app/models/payment.py:Payment.gateway_txn_id","gateway_txn_id","backend/app/models/payment.py",30,30,"        Enum(PaymentGateway, name=""payment_gateway""), nullable=False
+    )
+    gateway_txn_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    amount_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[PaymentStatus] = mapped_column(","","Mapped"
+"Property:backend/app/models/payment.py:Payment.amount_vnd","amount_vnd","backend/app/models/payment.py",31,31,"    )
+    gateway_txn_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    amount_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, name=""payment_status""),","","Mapped"
+"Property:backend/app/models/payment.py:Payment.status","status","backend/app/models/payment.py",32,37,"    gateway_txn_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    amount_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, name=""payment_status""),
+        default=PaymentStatus.pending,
+        nullable=False,
+        index=True,
+    )
+    raw_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+","","Mapped"
+"Property:backend/app/models/payment.py:Payment.raw_payload","raw_payload","backend/app/models/payment.py",38,38,"        index=True,
+    )
+    raw_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/payment.py:Payment.created_at","created_at","backend/app/models/payment.py",40,42,"    raw_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+","","Mapped"
+"Property:backend/app/models/payment.py:Payment.paid_at","paid_at","backend/app/models/payment.py",43,43,"        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.user_id","user_id","backend/app/models/refresh_token.py",17,22,"    __tablename__ = ""refresh_tokens""
+
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""users.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.token_hash","token_hash","backend/app/models/refresh_token.py",23,23,"        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.expires_at","expires_at","backend/app/models/refresh_token.py",24,24,"    )
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.revoked_at","revoked_at","backend/app/models/refresh_token.py",25,25,"    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.user_agent","user_agent","backend/app/models/refresh_token.py",26,26,"    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.ip","ip","backend/app/models/refresh_token.py",27,27,"    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.created_at","created_at","backend/app/models/refresh_token.py",28,30,"    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    user: Mapped[""User""] = relationship(""User"", back_populates=""refresh_tokens"")","","Mapped"
+"Property:backend/app/models/refresh_token.py:RefreshToken.user","user","backend/app/models/refresh_token.py",32,32,"    )
+
+    user: Mapped[""User""] = relationship(""User"", back_populates=""refresh_tokens"")
+","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.id","id","backend/app/models/subscription.py",15,15,"    __tablename__ = ""subscription_plans""
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.code","code","backend/app/models/subscription.py",16,16,"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price_vnd: Mapped[int] = mapped_column(Integer, nullable=False)","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.name","name","backend/app/models/subscription.py",17,17,"    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    duration_days: Mapped[int] = mapped_column(Integer, nullable=False)","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.price_vnd","price_vnd","backend/app/models/subscription.py",18,18,"    code: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    features: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.duration_days","duration_days","backend/app/models/subscription.py",19,19,"    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    features: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.features","features","backend/app/models/subscription.py",20,20,"    price_vnd: Mapped[int] = mapped_column(Integer, nullable=False)
+    duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    features: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.is_active","is_active","backend/app/models/subscription.py",21,21,"    duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    features: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False","","Mapped"
+"Property:backend/app/models/subscription.py:SubscriptionPlan.created_at","created_at","backend/app/models/subscription.py",22,24,"    features: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+","","Mapped"
+"Property:backend/app/models/subscription.py:UserSubscription.user_id","user_id","backend/app/models/subscription.py",30,35,"    __tablename__ = ""user_subscriptions""
+
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""users.id"", ondelete=""CASCADE""),
+        nullable=False,
+        index=True,
+    )
+    plan_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(""subscription_plans.id"", ondelete=""RESTRICT""), nullable=False","","Mapped"
+"Property:backend/app/models/subscription.py:UserSubscription.plan_id","plan_id","backend/app/models/subscription.py",36,38,"        index=True,
+    )
+    plan_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(""subscription_plans.id"", ondelete=""RESTRICT""), nullable=False
+    )
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus, name=""subscription_status""),","","Mapped"
+"Property:backend/app/models/subscription.py:UserSubscription.status","status","backend/app/models/subscription.py",39,44,"        Integer, ForeignKey(""subscription_plans.id"", ondelete=""RESTRICT""), nullable=False
+    )
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus, name=""subscription_status""),
+        default=SubscriptionStatus.active,
+        nullable=False,
+        index=True,
+    )
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)","","Mapped"
+"Property:backend/app/models/subscription.py:UserSubscription.starts_at","starts_at","backend/app/models/subscription.py",45,45,"        index=True,
+    )
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(","","Mapped"
+"Property:backend/app/models/subscription.py:UserSubscription.ends_at","ends_at","backend/app/models/subscription.py",46,46,"    )
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False","","Mapped"
+"Property:backend/app/models/subscription.py:UserSubscription.created_at","created_at","backend/app/models/subscription.py",47,49,"    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+","","Mapped"
+"Property:backend/app/models/user.py:User.email","email","backend/app/models/user.py",19,19,"    __tablename__ = ""users""
+
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(150), nullable=True)","","Mapped"
+"Property:backend/app/models/user.py:User.password_hash","password_hash","backend/app/models/user.py",20,20,"
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+","","Mapped"
+"Property:backend/app/models/user.py:User.full_name","full_name","backend/app/models/user.py",21,21,"    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+
+    role: Mapped[UserRole] = mapped_column(","","Mapped"
+"Property:backend/app/models/user.py:User.role","role","backend/app/models/user.py",23,25,"    full_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, name=""user_role""), default=UserRole.viewer, nullable=False, index=True
+    )
+    status: Mapped[UserStatus] = mapped_column(
+        Enum(UserStatus, name=""user_status""), default=UserStatus.active, nullable=False, index=True","","Mapped"
+"Property:backend/app/models/user.py:User.status","status","backend/app/models/user.py",26,28,"        Enum(UserRole, name=""user_role""), default=UserRole.viewer, nullable=False, index=True
+    )
+    status: Mapped[UserStatus] = mapped_column(
+        Enum(UserStatus, name=""user_status""), default=UserStatus.active, nullable=False, index=True
+    )
+
+    images_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)","","Mapped"
+"Property:backend/app/models/user.py:User.images_used","images_used","backend/app/models/user.py",30,30,"    )
+
+    images_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    active_workspace_id: Mapped[UUID | None] = mapped_column(","","Mapped"
+"Property:backend/app/models/user.py:User.active_workspace_id","active_workspace_id","backend/app/models/user.py",32,36,"    images_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    active_workspace_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(""documents.id"", ondelete=""SET NULL"", use_alter=True),
+        nullable=True,
+    )
+
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)","","Mapped"
+"Property:backend/app/models/user.py:User.last_login_at","last_login_at","backend/app/models/user.py",38,38,"    )
+
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    documents: Mapped[list[""Document""]] = relationship(","","Mapped"
+"Property:backend/app/models/user.py:User.documents","documents","backend/app/models/user.py",40,45,"    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    documents: Mapped[list[""Document""]] = relationship(
+        ""Document"",
+        back_populates=""owner"",
+        foreign_keys=""Document.user_id"",
+        cascade=""all, delete-orphan"",
+    )
+    refresh_tokens: Mapped[list[""RefreshToken""]] = relationship(
+        ""RefreshToken"", back_populates=""user"", cascade=""all, delete-orphan""","","Mapped"
+"Property:backend/app/models/user.py:User.refresh_tokens","refresh_tokens","backend/app/models/user.py",46,48,"        cascade=""all, delete-orphan"",
+    )
+    refresh_tokens: Mapped[list[""RefreshToken""]] = relationship(
+        ""RefreshToken"", back_populates=""user"", cascade=""all, delete-orphan""
+    )
+","","Mapped"
+"Property:backend/app/schemas/auth.py:RegisterIn.email","email","backend/app/schemas/auth.py",7,7,"
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    full_name: str | None = Field(default=None, max_length=150)","","EmailStr"
+"Property:backend/app/schemas/auth.py:RegisterIn.password","password","backend/app/schemas/auth.py",8,8,"class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    full_name: str | None = Field(default=None, max_length=150)
+","","str"
+"Property:backend/app/schemas/auth.py:RegisterIn.full_name","full_name","backend/app/schemas/auth.py",9,9,"    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    full_name: str | None = Field(default=None, max_length=150)
+
+","","str | None"
+"Property:backend/app/schemas/auth.py:LoginIn.email","email","backend/app/schemas/auth.py",13,13,"
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+","","EmailStr"
+"Property:backend/app/schemas/auth.py:LoginIn.password","password","backend/app/schemas/auth.py",14,14,"class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+","","str"
+"Property:backend/app/schemas/auth.py:TokenOut.access_token","access_token","backend/app/schemas/auth.py",18,18,"
+class TokenOut(BaseModel):
+    access_token: str
+    refresh_token: str | None = None
+    token_type: str = ""bearer""","","str"
+"Property:backend/app/schemas/auth.py:TokenOut.refresh_token","refresh_token","backend/app/schemas/auth.py",19,19,"class TokenOut(BaseModel):
+    access_token: str
+    refresh_token: str | None = None
+    token_type: str = ""bearer""
+","","str | None"
+"Property:backend/app/schemas/auth.py:TokenOut.token_type","token_type","backend/app/schemas/auth.py",20,20,"    access_token: str
+    refresh_token: str | None = None
+    token_type: str = ""bearer""
+
+","","str"
+"Property:backend/app/schemas/auth.py:RefreshIn.refresh_token","refresh_token","backend/app/schemas/auth.py",24,24,"
+class RefreshIn(BaseModel):
+    refresh_token: str
+
+","","str"
+"Property:backend/app/schemas/auth.py:LogoutIn.refresh_token","refresh_token","backend/app/schemas/auth.py",28,28,"
+class LogoutIn(BaseModel):
+    refresh_token: str | None = None
+
+","","str | None"
+"Property:backend/app/schemas/auth.py:UserOut.id","id","backend/app/schemas/auth.py",34,34,"    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: EmailStr
+    full_name: str | None","","UUID"
+"Property:backend/app/schemas/auth.py:UserOut.email","email","backend/app/schemas/auth.py",35,35,"
+    id: UUID
+    email: EmailStr
+    full_name: str | None
+    role: UserRole","","EmailStr"
+"Property:backend/app/schemas/auth.py:UserOut.full_name","full_name","backend/app/schemas/auth.py",36,36,"    id: UUID
+    email: EmailStr
+    full_name: str | None
+    role: UserRole
+    status: UserStatus","","str | None"
+"Property:backend/app/schemas/auth.py:UserOut.role","role","backend/app/schemas/auth.py",37,37,"    email: EmailStr
+    full_name: str | None
+    role: UserRole
+    status: UserStatus
+    images_used: int","","UserRole"
+"Property:backend/app/schemas/auth.py:UserOut.status","status","backend/app/schemas/auth.py",38,38,"    full_name: str | None
+    role: UserRole
+    status: UserStatus
+    images_used: int
+","","UserStatus"
+"Property:backend/app/schemas/auth.py:UserOut.images_used","images_used","backend/app/schemas/auth.py",39,39,"    role: UserRole
+    status: UserStatus
+    images_used: int
+
+","","int"
+"Property:backend/app/schemas/auth.py:AuthSessionOut.access_token","access_token","backend/app/schemas/auth.py",45,45,"    """"""Response returned by /auth/register and /auth/login: tokens + user info.""""""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = ""bearer""","","str"
+"Property:backend/app/schemas/auth.py:AuthSessionOut.refresh_token","refresh_token","backend/app/schemas/auth.py",46,46,"
+    access_token: str
+    refresh_token: str
+    token_type: str = ""bearer""
+    user: UserOut","","str"
+"Property:backend/app/schemas/auth.py:AuthSessionOut.token_type","token_type","backend/app/schemas/auth.py",47,47,"    access_token: str
+    refresh_token: str
+    token_type: str = ""bearer""
+    user: UserOut
+","","str"
+"Property:backend/app/schemas/auth.py:AuthSessionOut.user","user","backend/app/schemas/auth.py",48,48,"    refresh_token: str
+    token_type: str = ""bearer""
+    user: UserOut
+
+","","UserOut"
+"Property:backend/app/schemas/auth.py:DevLoginIn.email","email","backend/app/schemas/auth.py",52,52,"
+class DevLoginIn(BaseModel):
+    email: EmailStr = ""dev@example.com""
+    role: UserRole = UserRole.user
+","","EmailStr"
+"Property:backend/app/schemas/auth.py:DevLoginIn.role","role","backend/app/schemas/auth.py",53,53,"class DevLoginIn(BaseModel):
+    email: EmailStr = ""dev@example.com""
+    role: UserRole = UserRole.user
+","","UserRole"
+"Property:backend/app/schemas/correction.py:CorrectionOut.id","id","backend/app/schemas/correction.py",11,11,"    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    page_id: UUID
+    word_indices: list[int] | None","","UUID"
+"Property:backend/app/schemas/correction.py:CorrectionOut.page_id","page_id","backend/app/schemas/correction.py",12,12,"
+    id: UUID
+    page_id: UUID
+    word_indices: list[int] | None
+    start_offset: int | None","","UUID"
+"Property:backend/app/schemas/correction.py:CorrectionOut.word_indices","word_indices","backend/app/schemas/correction.py",13,13,"    id: UUID
+    page_id: UUID
+    word_indices: list[int] | None
+    start_offset: int | None
+    end_offset: int | None","","list[int] | None"
+"Property:backend/app/schemas/correction.py:CorrectionOut.start_offset","start_offset","backend/app/schemas/correction.py",14,14,"    page_id: UUID
+    word_indices: list[int] | None
+    start_offset: int | None
+    end_offset: int | None
+    original_text: str","","int | None"
+"Property:backend/app/schemas/correction.py:CorrectionOut.end_offset","end_offset","backend/app/schemas/correction.py",15,15,"    word_indices: list[int] | None
+    start_offset: int | None
+    end_offset: int | None
+    original_text: str
+    suggested_text: str","","int | None"
+"Property:backend/app/schemas/correction.py:CorrectionOut.original_text","original_text","backend/app/schemas/correction.py",16,16,"    start_offset: int | None
+    end_offset: int | None
+    original_text: str
+    suggested_text: str
+    reason: str | None","","str"
+"Property:backend/app/schemas/correction.py:CorrectionOut.suggested_text","suggested_text","backend/app/schemas/correction.py",17,17,"    end_offset: int | None
+    original_text: str
+    suggested_text: str
+    reason: str | None
+    llm_provider: LLMProvider","","str"
+"Property:backend/app/schemas/correction.py:CorrectionOut.reason","reason","backend/app/schemas/correction.py",18,18,"    original_text: str
+    suggested_text: str
+    reason: str | None
+    llm_provider: LLMProvider
+    llm_model: str","","str | None"
+"Property:backend/app/schemas/correction.py:CorrectionOut.llm_provider","llm_provider","backend/app/schemas/correction.py",19,19,"    suggested_text: str
+    reason: str | None
+    llm_provider: LLMProvider
+    llm_model: str
+    confidence_score: float | None","","LLMProvider"
+"Property:backend/app/schemas/correction.py:CorrectionOut.llm_model","llm_model","backend/app/schemas/correction.py",20,20,"    reason: str | None
+    llm_provider: LLMProvider
+    llm_model: str
+    confidence_score: float | None
+    status: CorrectionStatus","","str"
+"Property:backend/app/schemas/correction.py:CorrectionOut.confidence_score","confidence_score","backend/app/schemas/correction.py",21,21,"    llm_provider: LLMProvider
+    llm_model: str
+    confidence_score: float | None
+    status: CorrectionStatus
+    reviewed_at: datetime | None","","float | None"
+"Property:backend/app/schemas/correction.py:CorrectionOut.status","status","backend/app/schemas/correction.py",22,22,"    llm_model: str
+    confidence_score: float | None
+    status: CorrectionStatus
+    reviewed_at: datetime | None
+    created_at: datetime","","CorrectionStatus"
+"Property:backend/app/schemas/correction.py:CorrectionOut.reviewed_at","reviewed_at","backend/app/schemas/correction.py",23,23,"    confidence_score: float | None
+    status: CorrectionStatus
+    reviewed_at: datetime | None
+    created_at: datetime
+","","datetime | None"
+"Property:backend/app/schemas/correction.py:CorrectionOut.created_at","created_at","backend/app/schemas/correction.py",24,24,"    status: CorrectionStatus
+    reviewed_at: datetime | None
+    created_at: datetime
+
+","","datetime"
+"Property:backend/app/schemas/correction.py:BulkReviewIn.accept_ids","accept_ids","backend/app/schemas/correction.py",28,28,"
+class BulkReviewIn(BaseModel):
+    accept_ids: list[UUID] = []
+    reject_ids: list[UUID] = []
+","","list"
+"Property:backend/app/schemas/correction.py:BulkReviewIn.reject_ids","reject_ids","backend/app/schemas/correction.py",29,29,"class BulkReviewIn(BaseModel):
+    accept_ids: list[UUID] = []
+    reject_ids: list[UUID] = []
+
+","","list"
+"Property:backend/app/schemas/correction.py:FinalTextOut.page_id","page_id","backend/app/schemas/correction.py",33,33,"
+class FinalTextOut(BaseModel):
+    page_id: UUID
+    text: str
+    blurred: bool = False","","UUID"
+"Property:backend/app/schemas/correction.py:FinalTextOut.text","text","backend/app/schemas/correction.py",34,34,"class FinalTextOut(BaseModel):
+    page_id: UUID
+    text: str
+    blurred: bool = False
+","","str"
+"Property:backend/app/schemas/correction.py:FinalTextOut.blurred","blurred","backend/app/schemas/correction.py",35,35,"    page_id: UUID
+    text: str
+    blurred: bool = False
+","","bool"
+"Property:backend/app/schemas/document.py:DocumentCreate.title","title","backend/app/schemas/document.py",9,9,"
+class DocumentCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+","","str"
+"Property:backend/app/schemas/document.py:DocumentCreate.description","description","backend/app/schemas/document.py",10,10,"class DocumentCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+
+","","str | None"
+"Property:backend/app/schemas/document.py:DocumentOut.id","id","backend/app/schemas/document.py",16,16,"    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str
+    description: str | None","","UUID"
+"Property:backend/app/schemas/document.py:DocumentOut.title","title","backend/app/schemas/document.py",17,17,"
+    id: UUID
+    title: str
+    description: str | None
+    status: DocumentStatus","","str"
+"Property:backend/app/schemas/document.py:DocumentOut.description","description","backend/app/schemas/document.py",18,18,"    id: UUID
+    title: str
+    description: str | None
+    status: DocumentStatus
+    total_pages: int","","str | None"
+"Property:backend/app/schemas/document.py:DocumentOut.status","status","backend/app/schemas/document.py",19,19,"    title: str
+    description: str | None
+    status: DocumentStatus
+    total_pages: int
+    created_at: datetime","","DocumentStatus"
+"Property:backend/app/schemas/document.py:DocumentOut.total_pages","total_pages","backend/app/schemas/document.py",20,20,"    description: str | None
+    status: DocumentStatus
+    total_pages: int
+    created_at: datetime
+","","int"
+"Property:backend/app/schemas/document.py:DocumentOut.created_at","created_at","backend/app/schemas/document.py",21,21,"    status: DocumentStatus
+    total_pages: int
+    created_at: datetime
+","","datetime"
+"Property:backend/app/schemas/ocr.py:OcrWordNode.id","id","backend/app/schemas/ocr.py",16,16,"
+class OcrWordNode(BaseModel):
+    id: str
+    text: str
+    bbox: BBox","","str"
+"Property:backend/app/schemas/ocr.py:OcrWordNode.text","text","backend/app/schemas/ocr.py",17,17,"class OcrWordNode(BaseModel):
+    id: str
+    text: str
+    bbox: BBox
+    confidence: float  # 0..1","","str"
+"Property:backend/app/schemas/ocr.py:OcrWordNode.bbox","bbox","backend/app/schemas/ocr.py",18,18,"    id: str
+    text: str
+    bbox: BBox
+    confidence: float  # 0..1
+    start_offset: int","","BBox"
+"Property:backend/app/schemas/ocr.py:OcrWordNode.confidence","confidence","backend/app/schemas/ocr.py",19,19,"    text: str
+    bbox: BBox
+    confidence: float  # 0..1
+    start_offset: int
+    end_offset: int","","float"
+"Property:backend/app/schemas/ocr.py:OcrWordNode.start_offset","start_offset","backend/app/schemas/ocr.py",20,20,"    bbox: BBox
+    confidence: float  # 0..1
+    start_offset: int
+    end_offset: int
+","","int"
+"Property:backend/app/schemas/ocr.py:OcrWordNode.end_offset","end_offset","backend/app/schemas/ocr.py",21,21,"    confidence: float  # 0..1
+    start_offset: int
+    end_offset: int
+
+","","int"
+"Property:backend/app/schemas/ocr.py:OcrLineNode.id","id","backend/app/schemas/ocr.py",25,25,"
+class OcrLineNode(BaseModel):
+    id: str
+    bbox: BBox
+    text: str","","str"
+"Property:backend/app/schemas/ocr.py:OcrLineNode.bbox","bbox","backend/app/schemas/ocr.py",26,26,"class OcrLineNode(BaseModel):
+    id: str
+    bbox: BBox
+    text: str
+    confidence: float","","BBox"
+"Property:backend/app/schemas/ocr.py:OcrLineNode.text","text","backend/app/schemas/ocr.py",27,27,"    id: str
+    bbox: BBox
+    text: str
+    confidence: float
+    words: list[OcrWordNode] = Field(default_factory=list)","","str"
+"Property:backend/app/schemas/ocr.py:OcrLineNode.confidence","confidence","backend/app/schemas/ocr.py",28,28,"    bbox: BBox
+    text: str
+    confidence: float
+    words: list[OcrWordNode] = Field(default_factory=list)
+","","float"
+"Property:backend/app/schemas/ocr.py:OcrLineNode.words","words","backend/app/schemas/ocr.py",29,29,"    text: str
+    confidence: float
+    words: list[OcrWordNode] = Field(default_factory=list)
+
+","","list"
+"Property:backend/app/schemas/ocr.py:OcrParagraphNode.id","id","backend/app/schemas/ocr.py",33,33,"
+class OcrParagraphNode(BaseModel):
+    id: str
+    bbox: BBox
+    reading_order: int","","str"
+"Property:backend/app/schemas/ocr.py:OcrParagraphNode.bbox","bbox","backend/app/schemas/ocr.py",34,34,"class OcrParagraphNode(BaseModel):
+    id: str
+    bbox: BBox
+    reading_order: int
+    lines: list[OcrLineNode] = Field(default_factory=list)","","BBox"
+"Property:backend/app/schemas/ocr.py:OcrParagraphNode.reading_order","reading_order","backend/app/schemas/ocr.py",35,35,"    id: str
+    bbox: BBox
+    reading_order: int
+    lines: list[OcrLineNode] = Field(default_factory=list)
+","","int"
+"Property:backend/app/schemas/ocr.py:OcrParagraphNode.lines","lines","backend/app/schemas/ocr.py",36,36,"    bbox: BBox
+    reading_order: int
+    lines: list[OcrLineNode] = Field(default_factory=list)
+
+","","list"
+"Property:backend/app/schemas/ocr.py:OcrBlockNode.id","id","backend/app/schemas/ocr.py",40,40,"
+class OcrBlockNode(BaseModel):
+    id: str
+    type: str = ""paragraph""
+    bbox: BBox","","str"
+"Property:backend/app/schemas/ocr.py:OcrBlockNode.type","type","backend/app/schemas/ocr.py",41,41,"class OcrBlockNode(BaseModel):
+    id: str
+    type: str = ""paragraph""
+    bbox: BBox
+    reading_order: int","","str"
+"Property:backend/app/schemas/ocr.py:OcrBlockNode.bbox","bbox","backend/app/schemas/ocr.py",42,42,"    id: str
+    type: str = ""paragraph""
+    bbox: BBox
+    reading_order: int
+    confidence: float","","BBox"
+"Property:backend/app/schemas/ocr.py:OcrBlockNode.reading_order","reading_order","backend/app/schemas/ocr.py",43,43,"    type: str = ""paragraph""
+    bbox: BBox
+    reading_order: int
+    confidence: float
+    paragraphs: list[OcrParagraphNode] = Field(default_factory=list)","","int"
+"Property:backend/app/schemas/ocr.py:OcrBlockNode.confidence","confidence","backend/app/schemas/ocr.py",44,44,"    bbox: BBox
+    reading_order: int
+    confidence: float
+    paragraphs: list[OcrParagraphNode] = Field(default_factory=list)
+","","float"
+"Property:backend/app/schemas/ocr.py:OcrBlockNode.paragraphs","paragraphs","backend/app/schemas/ocr.py",45,45,"    reading_order: int
+    confidence: float
+    paragraphs: list[OcrParagraphNode] = Field(default_factory=list)
+
+","","list"
+"Property:backend/app/schemas/ocr.py:LowConfidenceWord.word_id","word_id","backend/app/schemas/ocr.py",49,49,"
+class LowConfidenceWord(BaseModel):
+    word_id: str
+    text: str
+    confidence: float","","str"
+"Property:backend/app/schemas/ocr.py:LowConfidenceWord.text","text","backend/app/schemas/ocr.py",50,50,"class LowConfidenceWord(BaseModel):
+    word_id: str
+    text: str
+    confidence: float
+    bbox: BBox","","str"
+"Property:backend/app/schemas/ocr.py:LowConfidenceWord.confidence","confidence","backend/app/schemas/ocr.py",51,51,"    word_id: str
+    text: str
+    confidence: float
+    bbox: BBox
+    start_offset: int","","float"
+"Property:backend/app/schemas/ocr.py:LowConfidenceWord.bbox","bbox","backend/app/schemas/ocr.py",52,52,"    text: str
+    confidence: float
+    bbox: BBox
+    start_offset: int
+    end_offset: int","","BBox"
+"Property:backend/app/schemas/ocr.py:LowConfidenceWord.start_offset","start_offset","backend/app/schemas/ocr.py",53,53,"    confidence: float
+    bbox: BBox
+    start_offset: int
+    end_offset: int
+","","int"
+"Property:backend/app/schemas/ocr.py:LowConfidenceWord.end_offset","end_offset","backend/app/schemas/ocr.py",54,54,"    bbox: BBox
+    start_offset: int
+    end_offset: int
+
+","","int"
+"Property:backend/app/schemas/ocr.py:OCRDocument.page_id","page_id","backend/app/schemas/ocr.py",58,58,"
+class OCRDocument(BaseModel):
+    page_id: str | None = None
+    width: int
+    height: int","","str | None"
+"Property:backend/app/schemas/ocr.py:OCRDocument.width","width","backend/app/schemas/ocr.py",59,59,"class OCRDocument(BaseModel):
+    page_id: str | None = None
+    width: int
+    height: int
+    blocks: list[OcrBlockNode] = Field(default_factory=list)","","int"
+"Property:backend/app/schemas/ocr.py:OCRDocument.height","height","backend/app/schemas/ocr.py",60,60,"    page_id: str | None = None
+    width: int
+    height: int
+    blocks: list[OcrBlockNode] = Field(default_factory=list)
+    plain_text: str = """"","","int"
+"Property:backend/app/schemas/ocr.py:OCRDocument.blocks","blocks","backend/app/schemas/ocr.py",61,61,"    width: int
+    height: int
+    blocks: list[OcrBlockNode] = Field(default_factory=list)
+    plain_text: str = """"
+    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)","","list"
+"Property:backend/app/schemas/ocr.py:OCRDocument.plain_text","plain_text","backend/app/schemas/ocr.py",62,62,"    height: int
+    blocks: list[OcrBlockNode] = Field(default_factory=list)
+    plain_text: str = """"
+    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)
+","","str"
+"Property:backend/app/schemas/ocr.py:OCRDocument.low_confidence_words","low_confidence_words","backend/app/schemas/ocr.py",63,63,"    blocks: list[OcrBlockNode] = Field(default_factory=list)
+    plain_text: str = """"
+    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)
+
+","","list"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.id","id","backend/app/schemas/ocr.py",73,73,"    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    word_index: int
+    text: str","","int"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.word_index","word_index","backend/app/schemas/ocr.py",74,74,"
+    id: int
+    word_index: int
+    text: str
+    confidence: float","","int"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.text","text","backend/app/schemas/ocr.py",75,75,"    id: int
+    word_index: int
+    text: str
+    confidence: float
+    bbox: dict[str, Any] | None","","str"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.confidence","confidence","backend/app/schemas/ocr.py",76,76,"    word_index: int
+    text: str
+    confidence: float
+    bbox: dict[str, Any] | None
+    line_number: int | None","","float"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.bbox","bbox","backend/app/schemas/ocr.py",77,77,"    text: str
+    confidence: float
+    bbox: dict[str, Any] | None
+    line_number: int | None
+    is_suspicious: bool","","dict[str, Any] | None"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.line_number","line_number","backend/app/schemas/ocr.py",78,78,"    confidence: float
+    bbox: dict[str, Any] | None
+    line_number: int | None
+    is_suspicious: bool
+    start_offset: int | None = None","","int | None"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.is_suspicious","is_suspicious","backend/app/schemas/ocr.py",79,79,"    bbox: dict[str, Any] | None
+    line_number: int | None
+    is_suspicious: bool
+    start_offset: int | None = None
+    end_offset: int | None = None","","bool"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.start_offset","start_offset","backend/app/schemas/ocr.py",80,80,"    line_number: int | None
+    is_suspicious: bool
+    start_offset: int | None = None
+    end_offset: int | None = None
+","","int | None"
+"Property:backend/app/schemas/ocr.py:OcrWordOut.end_offset","end_offset","backend/app/schemas/ocr.py",81,81,"    is_suspicious: bool
+    start_offset: int | None = None
+    end_offset: int | None = None
+
+","","int | None"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.page_id","page_id","backend/app/schemas/ocr.py",87,87,"    """"""Returned by GET /pages/{id}/ocr — layout JSON + Tiptap + plain text.""""""
+
+    page_id: str
+    width: int | None = None
+    height: int | None = None","","str"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.width","width","backend/app/schemas/ocr.py",88,88,"
+    page_id: str
+    width: int | None = None
+    height: int | None = None
+    ocr_document: dict[str, Any] | None = None","","int | None"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.height","height","backend/app/schemas/ocr.py",89,89,"    page_id: str
+    width: int | None = None
+    height: int | None = None
+    ocr_document: dict[str, Any] | None = None
+    tiptap_json: dict[str, Any] | None = None","","int | None"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.ocr_document","ocr_document","backend/app/schemas/ocr.py",90,90,"    width: int | None = None
+    height: int | None = None
+    ocr_document: dict[str, Any] | None = None
+    tiptap_json: dict[str, Any] | None = None
+    plain_text: str = """"","","dict[str, Any] | None"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.tiptap_json","tiptap_json","backend/app/schemas/ocr.py",91,91,"    height: int | None = None
+    ocr_document: dict[str, Any] | None = None
+    tiptap_json: dict[str, Any] | None = None
+    plain_text: str = """"
+    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)","","dict[str, Any] | None"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.plain_text","plain_text","backend/app/schemas/ocr.py",92,92,"    ocr_document: dict[str, Any] | None = None
+    tiptap_json: dict[str, Any] | None = None
+    plain_text: str = """"
+    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)
+    suspicious_count: int = 0","","str"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.low_confidence_words","low_confidence_words","backend/app/schemas/ocr.py",93,93,"    tiptap_json: dict[str, Any] | None = None
+    plain_text: str = """"
+    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)
+    suspicious_count: int = 0
+    blurred: bool = False","","list"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.suspicious_count","suspicious_count","backend/app/schemas/ocr.py",94,94,"    plain_text: str = """"
+    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)
+    suspicious_count: int = 0
+    blurred: bool = False
+","","int"
+"Property:backend/app/schemas/ocr.py:OcrDocumentOut.blurred","blurred","backend/app/schemas/ocr.py",95,95,"    low_confidence_words: list[LowConfidenceWord] = Field(default_factory=list)
+    suspicious_count: int = 0
+    blurred: bool = False
+","","bool"
+"Property:backend/app/schemas/page.py:PageOut.id","id","backend/app/schemas/page.py",12,12,"    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    document_id: UUID
+    page_number: int","","UUID"
+"Property:backend/app/schemas/page.py:PageOut.document_id","document_id","backend/app/schemas/page.py",13,13,"
+    id: UUID
+    document_id: UUID
+    page_number: int
+    status: PageStatus","","UUID"
+"Property:backend/app/schemas/page.py:PageOut.page_number","page_number","backend/app/schemas/page.py",14,14,"    id: UUID
+    document_id: UUID
+    page_number: int
+    status: PageStatus
+    original_url: str","","int"
+"Property:backend/app/schemas/page.py:PageOut.status","status","backend/app/schemas/page.py",15,15,"    document_id: UUID
+    page_number: int
+    status: PageStatus
+    original_url: str
+    # Current denoised image (overwritten on each ""Denoise Again"").","","PageStatus"
+"Property:backend/app/schemas/page.py:PageOut.original_url","original_url","backend/app/schemas/page.py",16,16,"    page_number: int
+    status: PageStatus
+    original_url: str
+    # Current denoised image (overwritten on each ""Denoise Again"").
+    denoised_url: str | None","","str"
+"Property:backend/app/schemas/page.py:PageOut.denoised_url","denoised_url","backend/app/schemas/page.py",18,18,"    original_url: str
+    # Current denoised image (overwritten on each ""Denoise Again"").
+    denoised_url: str | None
+    denoise_version: int = 0
+    width: int | None","","str | None"
+"Property:backend/app/schemas/page.py:PageOut.denoise_version","denoise_version","backend/app/schemas/page.py",19,19,"    # Current denoised image (overwritten on each ""Denoise Again"").
+    denoised_url: str | None
+    denoise_version: int = 0
+    width: int | None
+    height: int | None","","int"
+"Property:backend/app/schemas/page.py:PageOut.width","width","backend/app/schemas/page.py",20,20,"    denoised_url: str | None
+    denoise_version: int = 0
+    width: int | None
+    height: int | None
+    file_size_kb: int | None","","int | None"
+"Property:backend/app/schemas/page.py:PageOut.height","height","backend/app/schemas/page.py",21,21,"    denoise_version: int = 0
+    width: int | None
+    height: int | None
+    file_size_kb: int | None
+    ocr_plain_text: str | None = None","","int | None"
+"Property:backend/app/schemas/page.py:PageOut.file_size_kb","file_size_kb","backend/app/schemas/page.py",22,22,"    width: int | None
+    height: int | None
+    file_size_kb: int | None
+    ocr_plain_text: str | None = None
+    tiptap_json: dict[str, Any] | None = None","","int | None"
+"Property:backend/app/schemas/page.py:PageOut.ocr_plain_text","ocr_plain_text","backend/app/schemas/page.py",23,23,"    height: int | None
+    file_size_kb: int | None
+    ocr_plain_text: str | None = None
+    tiptap_json: dict[str, Any] | None = None
+    final_text: str | None = None","","str | None"
+"Property:backend/app/schemas/page.py:PageOut.tiptap_json","tiptap_json","backend/app/schemas/page.py",24,24,"    file_size_kb: int | None
+    ocr_plain_text: str | None = None
+    tiptap_json: dict[str, Any] | None = None
+    final_text: str | None = None
+    processing_error: str | None","","dict[str, Any] | None"
+"Property:backend/app/schemas/page.py:PageOut.final_text","final_text","backend/app/schemas/page.py",25,25,"    ocr_plain_text: str | None = None
+    tiptap_json: dict[str, Any] | None = None
+    final_text: str | None = None
+    processing_error: str | None
+    completed_at: datetime | None","","str | None"
+"Property:backend/app/schemas/page.py:PageOut.processing_error","processing_error","backend/app/schemas/page.py",26,26,"    tiptap_json: dict[str, Any] | None = None
+    final_text: str | None = None
+    processing_error: str | None
+    completed_at: datetime | None
+","","str | None"
+"Property:backend/app/schemas/page.py:PageOut.completed_at","completed_at","backend/app/schemas/page.py",27,27,"    final_text: str | None = None
+    processing_error: str | None
+    completed_at: datetime | None
+
+","","datetime | None"
+"Property:backend/app/schemas/page.py:PageStatusOut.id","id","backend/app/schemas/page.py",33,33,"    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: PageStatus
+    denoised_url: str | None","","UUID"
+"Property:backend/app/schemas/page.py:PageStatusOut.status","status","backend/app/schemas/page.py",34,34,"
+    id: UUID
+    status: PageStatus
+    denoised_url: str | None
+    denoise_version: int = 0","","PageStatus"
+"Property:backend/app/schemas/page.py:PageStatusOut.denoised_url","denoised_url","backend/app/schemas/page.py",35,35,"    id: UUID
+    status: PageStatus
+    denoised_url: str | None
+    denoise_version: int = 0
+    processing_error: str | None","","str | None"
+"Property:backend/app/schemas/page.py:PageStatusOut.denoise_version","denoise_version","backend/app/schemas/page.py",36,36,"    status: PageStatus
+    denoised_url: str | None
+    denoise_version: int = 0
+    processing_error: str | None
+","","int"
+"Property:backend/app/schemas/page.py:PageStatusOut.processing_error","processing_error","backend/app/schemas/page.py",37,37,"    denoised_url: str | None
+    denoise_version: int = 0
+    processing_error: str | None
+
+","","str | None"
+"Property:backend/app/schemas/page.py:DenoiseIn.source","source","backend/app/schemas/page.py",43,43,"    """"""Options for POST /pages/{id}/denoise (spec §4.3).""""""
+
+    source: Literal[""original"", ""current_denoised""] = ""original""
+    params: dict[str, Any] = Field(default_factory=dict)
+","","Literal"
+"Property:backend/app/schemas/page.py:DenoiseIn.params","params","backend/app/schemas/page.py",44,44,"
+    source: Literal[""original"", ""current_denoised""] = ""original""
+    params: dict[str, Any] = Field(default_factory=dict)
+
+","","dict"
+"Property:backend/app/schemas/page.py:TiptapPatchIn.tiptap_json","tiptap_json","backend/app/schemas/page.py",50,50,"    """"""Manual edit save from the Tiptap editor (spec §7, §16).""""""
+
+    tiptap_json: dict[str, Any]
+","","dict"
+"Property:backend/app/schemas/upload.py:SignatureIn.workspace_id","workspace_id","backend/app/schemas/upload.py",9,9,"    """"""Frontend asks the backend to sign a direct Cloudinary upload.""""""
+
+    workspace_id: UUID
+    filename: str
+    content_type: str","","UUID"
+"Property:backend/app/schemas/upload.py:SignatureIn.filename","filename","backend/app/schemas/upload.py",10,10,"
+    workspace_id: UUID
+    filename: str
+    content_type: str
+    file_size: int = Field(ge=1, description=""Bytes"")","","str"
+"Property:backend/app/schemas/upload.py:SignatureIn.content_type","content_type","backend/app/schemas/upload.py",11,11,"    workspace_id: UUID
+    filename: str
+    content_type: str
+    file_size: int = Field(ge=1, description=""Bytes"")
+    purpose: str = ""original_page""","","str"
+"Property:backend/app/schemas/upload.py:SignatureIn.file_size","file_size","backend/app/schemas/upload.py",12,12,"    filename: str
+    content_type: str
+    file_size: int = Field(ge=1, description=""Bytes"")
+    purpose: str = ""original_page""
+","","int"
+"Property:backend/app/schemas/upload.py:SignatureIn.purpose","purpose","backend/app/schemas/upload.py",13,13,"    content_type: str
+    file_size: int = Field(ge=1, description=""Bytes"")
+    purpose: str = ""original_page""
+
+","","str"
+"Property:backend/app/schemas/upload.py:SignatureOut.upload_url","upload_url","backend/app/schemas/upload.py",17,17,"
+class SignatureOut(BaseModel):
+    upload_url: str
+    fields: dict
+    expires_in: int = 300","","str"
+"Property:backend/app/schemas/upload.py:SignatureOut.fields","fields","backend/app/schemas/upload.py",18,18,"class SignatureOut(BaseModel):
+    upload_url: str
+    fields: dict
+    expires_in: int = 300
+","","dict"
+"Property:backend/app/schemas/upload.py:SignatureOut.expires_in","expires_in","backend/app/schemas/upload.py",19,19,"    upload_url: str
+    fields: dict
+    expires_in: int = 300
+
+","","int"
+"Property:backend/app/schemas/upload.py:RegisterUploadIn.original_image_url","original_image_url","backend/app/schemas/upload.py",25,25,"    """"""Frontend reports the Cloudinary result so the backend can store metadata.""""""
+
+    original_image_url: str
+    cloudinary_public_id: str
+    filename: str | None = None","","str"
+"Property:backend/app/schemas/upload.py:RegisterUploadIn.cloudinary_public_id","cloudinary_public_id","backend/app/schemas/upload.py",26,26,"
+    original_image_url: str
+    cloudinary_public_id: str
+    filename: str | None = None
+    file_size: int | None = None","","str"
+"Property:backend/app/schemas/upload.py:RegisterUploadIn.filename","filename","backend/app/schemas/upload.py",27,27,"    original_image_url: str
+    cloudinary_public_id: str
+    filename: str | None = None
+    file_size: int | None = None
+    width: int | None = None","","str | None"
+"Property:backend/app/schemas/upload.py:RegisterUploadIn.file_size","file_size","backend/app/schemas/upload.py",28,28,"    cloudinary_public_id: str
+    filename: str | None = None
+    file_size: int | None = None
+    width: int | None = None
+    height: int | None = None","","int | None"
+"Property:backend/app/schemas/upload.py:RegisterUploadIn.width","width","backend/app/schemas/upload.py",29,29,"    filename: str | None = None
+    file_size: int | None = None
+    width: int | None = None
+    height: int | None = None
+    format: str | None = None","","int | None"
+"Property:backend/app/schemas/upload.py:RegisterUploadIn.height","height","backend/app/schemas/upload.py",30,30,"    file_size: int | None = None
+    width: int | None = None
+    height: int | None = None
+    format: str | None = None
+","","int | None"
+"Property:backend/app/schemas/upload.py:RegisterUploadIn.format","format","backend/app/schemas/upload.py",31,31,"    width: int | None = None
+    height: int | None = None
+    format: str | None = None
+","","str | None"
+"Property:backend/app/services/export_service.py:flow","flow","backend/app/services/export_service.py",51,51,"    styles = getSampleStyleSheet()
+    body = styles[""BodyText""]
+    flow: list = []
+    for i, page in enumerate(pages):
+        if i > 0:","",""
+"Property:backend/app/services/llm_correction_service.py:words","words","backend/app/services/llm_correction_service.py",47,52,"        db.commit()
+
+        words: list[OcrWord] = (
+            db.query(OcrWord)
+            .filter(OcrWord.page_id == page.id)
+            .order_by(OcrWord.word_index)
+            .all()
+        )
+        if not words:
+            raise RuntimeError(""No OCR words to correct — run OCR first"")","",""
+"Property:backend/app/services/llm_correction_service.py:results","results","backend/app/services/llm_correction_service.py",73,73,"        inputs = [{""context"": c.context, ""original"": c.original_text} for c in chunks]
+        logger.info(""Invoking LLM chain on %s chunks (provider=%s)"", len(inputs), provider.value)
+        results: list[CorrectionSuggestion] = chain.batch(inputs)
+
+        inserted = 0","",""
+"Property:backend/app/services/llm_correction_service.py:replacements","replacements","backend/app/services/llm_correction_service.py",164,164,"        return """"
+    kept = _kept_corrections(db, page_id)
+    replacements: dict[int, str | None] = {}
+    for c in kept:
+        if not c.word_indices:","",""
+"Property:backend/app/services/llm_correction_service.py:out","out","backend/app/services/llm_correction_service.py",171,171,"        for idx in c.word_indices[1:]:
+            replacements[idx] = None
+    out: list[str] = []
+    for w in words:
+        if w.word_index in replacements:","",""
+"Property:backend/app/services/suspicious_detector_service.py:SuspiciousChunk.word_indices","word_indices","backend/app/services/suspicious_detector_service.py",16,16,"@dataclass(slots=True)
+class SuspiciousChunk:
+    word_indices: list[int]  # indices of the suspicious words inside this chunk
+    original_text: str       # original raw text of the suspicious span
+    context_before: str","","list"
+"Property:backend/app/services/suspicious_detector_service.py:SuspiciousChunk.original_text","original_text","backend/app/services/suspicious_detector_service.py",17,17,"class SuspiciousChunk:
+    word_indices: list[int]  # indices of the suspicious words inside this chunk
+    original_text: str       # original raw text of the suspicious span
+    context_before: str
+    context_after: str","","str"
+"Property:backend/app/services/suspicious_detector_service.py:SuspiciousChunk.context_before","context_before","backend/app/services/suspicious_detector_service.py",18,18,"    word_indices: list[int]  # indices of the suspicious words inside this chunk
+    original_text: str       # original raw text of the suspicious span
+    context_before: str
+    context_after: str
+","","str"
+"Property:backend/app/services/suspicious_detector_service.py:SuspiciousChunk.context_after","context_after","backend/app/services/suspicious_detector_service.py",19,19,"    original_text: str       # original raw text of the suspicious span
+    context_before: str
+    context_after: str
+
+    @property","","str"
+"Property:backend/app/services/suspicious_detector_service.py:chunks","chunks","backend/app/services/suspicious_detector_service.py",43,43,"        return []
+
+    chunks: list[list[int]] = []
+    current: list[int] = [sus_positions[0]]
+    for pos in sus_positions[1:]:","",""
+"Property:backend/app/services/suspicious_detector_service.py:current","current","backend/app/services/suspicious_detector_service.py",44,44,"
+    chunks: list[list[int]] = []
+    current: list[int] = [sus_positions[0]]
+    for pos in sus_positions[1:]:
+        if pos - current[-1] <= max_gap + 1:","",""
+"Property:backend/app/services/suspicious_detector_service.py:result","result","backend/app/services/suspicious_detector_service.py",53,53,"    chunks.append(current)
+
+    result: list[SuspiciousChunk] = []
+    for chunk in chunks:
+        start, end = chunk[0], chunk[-1]","",""
+"Property:backend/app/services/tiptap_service.py:content","content","backend/app/services/tiptap_service.py",30,30,"def ocr_document_to_tiptap(doc: OCRDocument) -> dict[str, Any]:
+    """"""Build a Tiptap `doc` node from the OCR layout.""""""
+    content: list[dict[str, Any]] = []
+    for block in doc.blocks:
+        for para in block.paragraphs:","",""
+"Property:backend/app/services/tiptap_service.py:node","node","backend/app/services/tiptap_service.py",34,43,"        for para in block.paragraphs:
+            text, rng = _paragraph_text(doc.plain_text, para)
+            node: dict[str, Any] = {
+                ""type"": ""paragraph"",
+                ""attrs"": {
+                    ""blockId"": block.id,
+                    ""paragraphId"": para.id,
+                    ""bbox"": para.bbox,
+                    ""confidence"": _paragraph_confidence(para),
+                    ""range"": rng,
+                },
+            }
+            if text:
+                node[""content""] = [{""type"": ""text"", ""text"": text}]","",""
+"Property:backend/app/services/tiptap_service.py:out","out","backend/app/services/tiptap_service.py",65,65,"def _apply_range(plain: str, start: int, end: int, corrs: list[tuple[int, int, str]]) -> str:
+    """"""Apply offset replacements that fall fully within [start, end).""""""
+    out: list[str] = []
+    cursor = start
+    for s, e, suggested in corrs:","",""
+"Property:backend/app/storage/base.py:StoredImage.key","key","backend/app/storage/base.py",9,9,"    """"""Result of persisting an image to a storage backend.""""""
+
+    key: str  # Cloudinary public_id, or relative path for local storage
+    url: str  # Publicly resolvable URL (Cloudinary) or local reference path
+    width: int | None","","str"
+"Property:backend/app/storage/base.py:StoredImage.url","url","backend/app/storage/base.py",10,10,"
+    key: str  # Cloudinary public_id, or relative path for local storage
+    url: str  # Publicly resolvable URL (Cloudinary) or local reference path
+    width: int | None
+    height: int | None","","str"
+"Property:backend/app/storage/base.py:StoredImage.width","width","backend/app/storage/base.py",11,11,"    key: str  # Cloudinary public_id, or relative path for local storage
+    url: str  # Publicly resolvable URL (Cloudinary) or local reference path
+    width: int | None
+    height: int | None
+    bytes_size: int","","int | None"
+"Property:backend/app/storage/base.py:StoredImage.height","height","backend/app/storage/base.py",12,12,"    url: str  # Publicly resolvable URL (Cloudinary) or local reference path
+    width: int | None
+    height: int | None
+    bytes_size: int
+","","int | None"
+"Property:backend/app/storage/base.py:StoredImage.bytes_size","bytes_size","backend/app/storage/base.py",13,13,"    width: int | None
+    height: int | None
+    bytes_size: int
+
+","","int"
+"Property:frontend/lib/api/client.ts:ApiError.status","status","frontend/lib/api/client.ts",75,75,"
+export class ApiError extends Error {
+  status: number
+  detail: unknown
+","","number"
+"Property:frontend/lib/api/client.ts:ApiError.detail","detail","frontend/lib/api/client.ts",76,76,"export class ApiError extends Error {
+  status: number
+  detail: unknown
+
+  constructor(status: number, message: string, detail?: unknown) {","","unknown"

@@ -1,9 +1,11 @@
 """Cloudinary-backed image storage."""
 import io
+import time
 
 import cloudinary
 import cloudinary.api
 import cloudinary.uploader
+import cloudinary.utils
 import httpx
 from PIL import Image
 
@@ -40,6 +42,19 @@ class CloudinaryStorage:
             bytes_size=result.get("bytes", len(data)),
         )
 
+    def upload_raw(self, data: bytes, *, folder: str, filename: str, fmt: str) -> str:
+        """Upload a non-image file (docx/pdf export) and return its secure URL."""
+        public_id = f"{folder}/{filename}" if folder else filename
+        result = cloudinary.uploader.upload(
+            io.BytesIO(data),
+            public_id=public_id,
+            resource_type="raw",
+            format=fmt,
+            overwrite=True,
+        )
+        logger.info("Uploaded raw file to Cloudinary: %s", result.get("public_id"))
+        return result["secure_url"]
+
     def download(self, key_or_url: str) -> bytes:
         url = key_or_url
         if not key_or_url.lower().startswith("http"):
@@ -54,6 +69,37 @@ class CloudinaryStorage:
             cloudinary.uploader.destroy(key, resource_type="image")
         except Exception:  # noqa: BLE001 - best-effort cleanup
             logger.warning("Failed to delete Cloudinary asset: %s", key, exc_info=True)
+
+    def sign_upload(self, *, folder: str, public_id: str) -> dict:
+        """Generate signed upload info so the browser can POST the file directly
+        to Cloudinary (the backend never receives the image binary, spec §3).
+
+        Returns the upload endpoint plus the exact form fields the client must
+        attach alongside `file` in a multipart/form-data request.
+        """
+        timestamp = int(time.time())
+        # Only the params included here are signed; the client MUST send the same
+        # values (folder, public_id, timestamp) or Cloudinary rejects the upload.
+        params_to_sign = {
+            "folder": folder,
+            "public_id": public_id,
+            "timestamp": timestamp,
+        }
+        signature = cloudinary.utils.api_sign_request(
+            params_to_sign, settings.CLOUDINARY_API_SECRET
+        )
+        return {
+            "upload_url": (
+                f"https://api.cloudinary.com/v1_1/{settings.CLOUDINARY_CLOUD_NAME}/image/upload"
+            ),
+            "fields": {
+                "api_key": settings.CLOUDINARY_API_KEY,
+                "timestamp": timestamp,
+                "signature": signature,
+                "folder": folder,
+                "public_id": public_id,
+            },
+        }
 
 
 def probe_dimensions(data: bytes) -> tuple[int, int]:

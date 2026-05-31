@@ -1,0 +1,28 @@
+"""OCR engine contract.
+
+Routers and services depend on this interface, never on a concrete engine
+(spec §6.3). Swap Tesseract for PaddleOCR PP-Structure or a cloud Document AI
+by adding a new implementation and changing `get_ocr_service()` — the rest of
+the system (orchestration, Tiptap convert, frontend) is unaffected.
+"""
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import Protocol, runtime_checkable
+
+from app.schemas.ocr import OCRDocument
+
+
+@runtime_checkable
+class OCRService(Protocol):
+    def extract_document_layout(self, image_bytes: bytes) -> OCRDocument:
+        """Run OCR and return a full document-layout result."""
+        ...
+
+
+@lru_cache(maxsize=1)
+def get_ocr_service() -> OCRService:
+    """Resolve the configured OCR engine. Currently Tesseract layout."""
+    from app.ai.ocr.tesseract_engine import TesseractLayoutEngine
+
+    return TesseractLayoutEngine()

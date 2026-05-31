@@ -28,6 +28,9 @@ class PageStatus(str, enum.Enum):
     ocr_done = "ocr_done"
     llm_running = "llm_running"
     llm_done = "llm_done"
+    reviewing = "reviewing"
+    reviewed = "reviewed"
+    exported = "exported"
     failed = "failed"
 
 

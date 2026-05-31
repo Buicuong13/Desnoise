@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
+    # CORS — comma-separated list of allowed origins for the frontend dev server
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
     # Uploads / storage
     MAX_UPLOAD_SIZE_MB: int = 20
     ALLOWED_IMAGE_TYPES: str = "image/jpeg,image/png,image/webp,image/tiff,image/bmp"
@@ -44,12 +47,17 @@ class Settings(BaseSettings):
 
     TESSERACT_CMD: str = "tesseract"
     TESSERACT_LANG: str = "vie+eng"
+    # Page segmentation mode passed via `--psm`. 6 = assume a single uniform
+    # block of text, which gives much cleaner line breaks for book pages than
+    # the default 3 (auto). Override per environment if you OCR mixed layouts.
+    TESSERACT_PSM: int = 6
 
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-    OPENROUTER_QWEN_MODEL: str = "qwen/qwen-2.5-7b-instruct:free"
+    # Free model used for the viewer role (kept env-var name for compatibility).
+    OPENROUTER_QWEN_MODEL: str = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
     SUSPICIOUS_CONFIDENCE_THRESHOLD: float = 70.0
 
     VIEWER_MAX_IMAGES: int = 10

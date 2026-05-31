@@ -31,6 +31,10 @@ class OcrWord(Base):
     bbox: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     line_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_suspicious: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Char offsets of this word inside `pages.ocr_plain_text` — used to map LLM
+    # suggestions onto Tiptap text spans.
+    start_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

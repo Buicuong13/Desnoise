@@ -11,7 +11,7 @@ Hệ thống web cho phép người dùng upload ảnh tài liệu (từng trang
 
 Hỗ trợ **nhiều workspace song song** (mỗi cuốn sách = 1 workspace, mở workspace khác vẫn giữ nguyên state cuốn cũ).
 
-3 role: **Admin / User / Viewer**. Viewer bị giới hạn 10 ảnh, văn bản blur, không xuất file; LLM dùng **Qwen free (OpenRouter)**. User trả phí dùng **ChatGPT API**. Admin quản lý toàn bộ.
+3 role: **Admin / User / Viewer**. Viewer bị giới hạn 10 ảnh, không xuất file; LLM dùng **Qwen free (OpenRouter)**. User trả phí dùng **ChatGPT API**. Admin quản lý toàn bộ.
 
 Tài liệu này chốt: cấu trúc thư mục (bám theo `readme.md` đã có), lược đồ DB, luồng nghiệp vụ, và **3 sơ đồ** (Use Case, Sequence, ERD).
 
