@@ -7,6 +7,15 @@ import type { ApiDocument } from './types'
 export interface CreateDocumentPayload {
   title: string
   description?: string
+  icon?: string
+  color?: string
+}
+
+export interface UpdateDocumentPayload {
+  title?: string
+  description?: string | null
+  icon?: string | null
+  color?: string | null
 }
 
 export function listDocuments(): Promise<ApiDocument[]> {
@@ -19,6 +28,10 @@ export function createDocument(payload: CreateDocumentPayload): Promise<ApiDocum
 
 export function getDocument(id: string): Promise<ApiDocument> {
   return apiRequest<ApiDocument>(`/api/v1/documents/${id}`)
+}
+
+export function updateDocument(id: string, patch: UpdateDocumentPayload): Promise<ApiDocument> {
+  return apiRequest<ApiDocument>(`/api/v1/documents/${id}`, { method: 'PATCH', body: patch })
 }
 
 export function archiveDocument(id: string): Promise<void> {

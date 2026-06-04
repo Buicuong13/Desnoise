@@ -8,7 +8,12 @@
  * The image binary never passes through the FastAPI backend.
  */
 import { apiRequest } from './client'
-import type { ApiPage, CloudinaryUploadResult, UploadSignature } from './types'
+import type {
+  ApiPage,
+  CloudinaryUploadResult,
+  UploadSignature,
+  ValidateUploadResult,
+} from './types'
 
 export function getSignature(payload: {
   workspace_id: string
@@ -60,6 +65,22 @@ export function uploadToCloudinary(
   })
 }
 
+/**
+ * Validate that an uploaded image is a document page (MobileNetV3 classifier).
+ * Called between the Cloudinary upload and registerUpload — if not a document,
+ * the page is never registered (no quota spent). Fail-open on the backend.
+ */
+export function validateUpload(payload: {
+  workspace_id: string
+  image_url: string
+  cloudinary_public_id?: string
+}): Promise<ValidateUploadResult> {
+  return apiRequest<ValidateUploadResult>('/api/v1/uploads/validate', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
 export function registerUpload(
   documentId: string,
   meta: {
@@ -70,6 +91,8 @@ export function registerUpload(
     width?: number
     height?: number
     format?: string
+    doc_class?: string
+    doc_class_confidence?: number
   },
 ): Promise<ApiPage> {
   return apiRequest<ApiPage>(`/api/v1/documents/${documentId}/pages/register-upload`, {

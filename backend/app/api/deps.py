@@ -5,6 +5,7 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.ai.llm.provider import resolve_llm_provider
 from app.core.exceptions import AuthenticationError, PermissionDenied
 from app.core.security import decode_access_token
 from app.database.session import get_db
@@ -56,9 +57,7 @@ def require_roles(*roles: UserRole):
 
 def get_llm_provider_for_user(user: User = Depends(get_current_user)) -> LLMProvider:
     """Backend picks LLM provider based on role — never trust client."""
-    if user.role in (UserRole.user, UserRole.admin):
-        return LLMProvider.openai
-    return LLMProvider.openrouter_qwen
+    return resolve_llm_provider(user.role)
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

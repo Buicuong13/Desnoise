@@ -3,21 +3,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
   Loader2,
   Sparkles,
   Wand2,
-  Check,
-  X,
   AlertCircle,
   RefreshCw,
   Download,
   ScanText,
   FileDown,
   Plus,
+  CheckCircle2,
+  ImageIcon,
+  Type,
+  UploadCloud,
+  ShieldCheck,
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,10 +30,12 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CorrectionReviewEditor } from '@/components/editor/correction-review-editor'
+import { CorrectionReviewModal } from '@/components/editor/correction-review-modal'
 import { ProcessingIndicator } from '@/components/editor/processing-indicator'
 import { PageUploadPanel } from '@/components/editor/page-upload-panel'
 import { BeforeAfterCompare } from '@/components/editor/before-after-compare'
 import { cn } from '@/lib/utils'
+import { getWorkspaceColor, getWorkspaceIcon } from '@/lib/workspace-icons'
 import { useAuth } from '@/lib/auth-store'
 import { api, ApiError } from '@/lib/api'
 import type {
@@ -49,15 +53,79 @@ const VIEWER_IMAGE_LIMIT = 10
 const VIEWER_WORKSPACE_LIMIT = 2
 const NEW_WORKSPACE = '__new__'
 
+// Visual preview of the end-to-end pipeline shown on the "new document" screen.
+const PIPELINE_PREVIEW = [
+  { icon: UploadCloud, label: 'Upload', desc: 'Add a page image (JPG/PNG/WEBP…).' },
+  { icon: ShieldCheck, label: 'Validate', desc: "We check it's really a document." },
+  { icon: Wand2, label: 'Denoise', desc: 'Clean noise to improve accuracy.' },
+  { icon: ScanText, label: 'OCR', desc: 'Extract the text content.' },
+  { icon: Sparkles, label: 'Restore', desc: 'AI fixes low-confidence words.' },
+] as const
+
+type StepState = 'locked' | 'active' | 'done'
+
 const sortByPageNumber = (ps: ApiPage[]) => [...ps].sort((a, b) => a.page_number - b.page_number)
 const pageHasContent = (p: ApiPage) => HAS_OCR.includes(p.status) || !!p.tiptap_json
+
+/** Vertical pipeline step card (right inspector) — the design system's signature component. */
+function PipelineStep({
+  step,
+  title,
+  description,
+  state,
+  children,
+}: {
+  step: number
+  title: string
+  description: string
+  state: StepState
+  children?: React.ReactNode
+}) {
+  const done = state === 'done'
+  const active = state === 'active'
+  return (
+    <div
+      className={cn(
+        'rounded-xl border p-4 transition-all',
+        done && 'border-border bg-muted/40',
+        active && 'border-primary/40 bg-primary/5 ring-1 ring-primary/10',
+        state === 'locked' && 'border-border bg-card opacity-50',
+      )}
+    >
+      <div className="flex gap-3">
+        <div className="shrink-0">
+          {done ? (
+            <CheckCircle2 className="h-5 w-5 text-success" />
+          ) : (
+            <span
+              className={cn(
+                'flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold',
+                active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {step}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+            {title}
+            {active && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />}
+          </h4>
+          <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{description}</p>
+          {children && <div className="mt-3">{children}</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function EditorPage() {
   const params = useParams()
   const router = useRouter()
   const docId = params.id as string
   const isNew = docId === 'new'
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const isViewer = user?.role === 'viewer'
   const isViewerAtLimit = isViewer && (user?.images_used ?? 0) >= VIEWER_IMAGE_LIMIT
 
@@ -66,6 +134,13 @@ export default function EditorPage() {
   const [activePageId, setActivePageId] = useState<string>('')
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(!isNew)
+
+  // Center pane: switch between the image canvas and the restored-text manuscript.
+  const [centerView, setCenterView] = useState<'image' | 'text'>('image')
+  // Toggle the "add page" uploader inside the canvas.
+  const [showUpload, setShowUpload] = useState(false)
+  // AI correction review modal (roomy diff view instead of the cramped pane).
+  const [reviewOpen, setReviewOpen] = useState(false)
 
   // OCR layout + LLM suggestions. OCR is kept per-page (every section needs its
   // own low-confidence words); corrections only for the active page.
@@ -76,6 +151,8 @@ export default function EditorPage() {
 
   const [busyAction, setBusyAction] = useState<'denoise' | 'ocr' | 'llm' | 'export' | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Text-view page sections, so clicking a thumbnail scrolls to that page.
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
   // New-document picker: choose an existing workspace to add to, or create one.
   const [pickerDocs, setPickerDocs] = useState<ApiDocument[]>([])
@@ -207,6 +284,14 @@ export default function EditorPage() {
     }
   }, [activePage, refreshPage])
 
+  // ── In the text view, scroll the active page's section into view when the
+  //    active page changes (e.g. user clicks a thumbnail).
+  useEffect(() => {
+    if (centerView !== 'text' || !activePageId) return
+    const el = sectionRefs.current[activePageId]
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [activePageId, centerView])
+
   // ── Pipeline actions (operate on the active page) ────────────────────────────
   const runAndWait = useCallback(
     async (trigger: () => Promise<unknown>, until: PageStatus[]) => {
@@ -257,6 +342,7 @@ export default function EditorPage() {
         setOcrByPage((m) => ({ ...m, [activePage.id]: r }))
         fetchedOcr.current.add(activePage.id)
         bumpRevision(activePage.id)
+        setCenterView('text')
         toast.success('OCR complete')
       }
     } catch (e) {
@@ -274,6 +360,7 @@ export default function EditorPage() {
       const c = await api.corrections.list(activePage.id)
       setCorrections(c)
       bumpRevision(activePage.id)
+      if (c.length > 0) setReviewOpen(true) // pop the roomy review modal
       toast.success(`LLM correction ready (${c.length} suggestions)`)
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to run LLM correction')
@@ -293,6 +380,21 @@ export default function EditorPage() {
       toast[action === 'keep' ? 'success' : 'info'](action === 'keep' ? 'Kept' : 'Reverted')
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed')
+    }
+  }
+
+  const handleKeepAll = async () => {
+    if (!activePage) return
+    const ids = corrections.filter((c) => c.status === 'pending').map((c) => c.id)
+    if (ids.length === 0) return
+    try {
+      const updated = await api.corrections.bulk({ accept_ids: ids })
+      setCorrections(updated)
+      await refreshPage(activePage.id)
+      bumpRevision(activePage.id)
+      toast.success(`Kept ${ids.length} suggestion${ids.length !== 1 ? 's' : ''}`)
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Failed to keep all')
     }
   }
 
@@ -321,10 +423,16 @@ export default function EditorPage() {
     }
   }
 
-  const handlePageRegistered = useCallback((page: ApiPage) => {
-    setPages((prev) => sortByPageNumber([...prev.filter((p) => p.id !== page.id), page]))
-    setActivePageId(page.id)
-  }, [])
+  const handlePageRegistered = useCallback(
+    (page: ApiPage) => {
+      setPages((prev) => sortByPageNumber([...prev.filter((p) => p.id !== page.id), page]))
+      setActivePageId(page.id)
+      setShowUpload(false)
+      setCenterView('image')
+      refreshUser() // upload consumed quota — refresh images_used so the chip updates now
+    },
+    [refreshUser],
+  )
 
   // ── New document: pick a workspace (existing or new) + upload the first page ──
   if (isNew) {
@@ -339,15 +447,17 @@ export default function EditorPage() {
         : undefined
 
     return (
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/history">
+            <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-xl font-bold text-foreground">New document</h1>
+            <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground">
+              New document
+            </h1>
             <p className="text-sm text-muted-foreground">
               Pick a workspace (or create one), then upload the first page to start the pipeline.
             </p>
@@ -362,16 +472,45 @@ export default function EditorPage() {
           </Alert>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Start the end-to-end flow</CardTitle>
-            <CardDescription>
-              Upload → denoise → OCR → restore, all in one workspace. Add more pages later and they&apos;ll
-              continue below.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1">
+        <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+          {/* Left: gradient info panel + vertical pipeline */}
+          <div className="relative flex flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-gradient-start via-gradient-middle to-gradient-end p-6 text-white shadow-sm">
+            <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px]" />
+            <div className="relative flex items-center gap-4">
+              <div className="rounded-xl bg-white/15 p-3 ring-1 ring-white/20 backdrop-blur">
+                <UploadCloud className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="font-display text-lg font-extrabold tracking-tight">
+                  Start the end-to-end flow
+                </h2>
+                <p className="text-sm text-white/80">
+                  We first check the image really is a document page.
+                </p>
+              </div>
+            </div>
+
+            <ol className="relative mt-7 space-y-1">
+              {PIPELINE_PREVIEW.map((s, i) => (
+                <li key={s.label} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25">
+                      <s.icon className="h-4 w-4" />
+                    </span>
+                    {i < PIPELINE_PREVIEW.length - 1 && <span className="my-1 w-px flex-1 bg-white/25" />}
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-sm font-semibold leading-tight">{s.label}</p>
+                    <p className="text-xs text-white/70">{s.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Right: workspace picker + uploader (the action) */}
+          <div className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="space-y-1.5">
               <Label>Workspace</Label>
               <Select value={pickerTarget} onValueChange={setPickerTarget}>
                 <SelectTrigger>
@@ -392,7 +531,7 @@ export default function EditorPage() {
             </div>
 
             {creatingNew && (
-              <div className="space-y-1">
+              <div className="mt-4 space-y-1.5">
                 <Label htmlFor="title">New workspace title</Label>
                 <Input
                   id="title"
@@ -403,14 +542,19 @@ export default function EditorPage() {
               </div>
             )}
 
-            <PageUploadPanel
-              mode={creatingNew ? { kind: 'new', title: newTitle } : { kind: 'existing', id: pickerTarget }}
-              disabled={uploadDisabled}
-              disabledReason={disabledReason}
-              onComplete={(_page, documentId) => router.replace(`/dashboard/editor/${documentId}`)}
-            />
-          </CardContent>
-        </Card>
+            <div className="mt-5 flex-1">
+              <PageUploadPanel
+                mode={creatingNew ? { kind: 'new', title: newTitle } : { kind: 'existing', id: pickerTarget }}
+                disabled={uploadDisabled}
+                disabledReason={disabledReason}
+                onComplete={(_page, documentId) => {
+                  refreshUser() // upload consumed quota — refresh images_used
+                  router.replace(`/dashboard/editor/${documentId}`)
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -418,8 +562,8 @@ export default function EditorPage() {
   // ── Loading / error ──────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
         Loading workspace…
       </div>
     )
@@ -439,373 +583,505 @@ export default function EditorPage() {
   const hasDenoised = !!activePage?.denoised_url
   const canDenoise = !!status && !ACTIVE_STATUSES.includes(status)
   const canOcr = hasDenoised && !!status && !ACTIVE_STATUSES.includes(status)
-  const showActiveEditor = !!activePage && pageHasContent(activePage)
+  const hasContent = !!activePage && pageHasContent(activePage)
   const canLlm = !!status && ['ocr_done', 'llm_done', 'reviewing', 'reviewed', 'exported'].includes(status)
   const pendingCount = corrections.filter((c) => c.status === 'pending').length
+  const canExport = !isViewer && pagesWithContent.length > 0
+
+  const denoiseState: StepState = hasDenoised ? 'done' : canDenoise ? 'active' : 'locked'
+  const ocrState: StepState = hasContent ? 'done' : canOcr ? 'active' : 'locked'
+  const llmState: StepState = ['llm_done', 'reviewing', 'reviewed', 'exported'].includes(status ?? '')
+    ? 'done'
+    : canLlm
+      ? 'active'
+      : 'locked'
+
+  const pageThumb = (p: ApiPage) => p.denoised_url || p.original_url
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/history">
+    <div className="-m-4 flex flex-col overflow-hidden lg:-m-6 lg:h-[calc(100svh-3.5rem)]">
+      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">{doc.title}</h1>
-            <p className="text-sm text-muted-foreground">
-              {pages.length} page{pages.length !== 1 ? 's' : ''} · status {doc.status}
-            </p>
+          <div className="h-5 w-px bg-border" />
+          {(() => {
+            const WIcon = getWorkspaceIcon(doc.icon)
+            return (
+              <div
+                className={cn(
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-sm',
+                  getWorkspaceColor(doc.color),
+                )}
+              >
+                <WIcon className="h-4 w-4" />
+              </div>
+            )
+          })()}
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 truncate font-display text-sm font-extrabold leading-tight text-foreground">
+              {doc.title}
+              {activePage && (
+                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted-foreground">
+                  P.{activePage.page_number} / {pages.length}
+                </span>
+              )}
+            </h1>
+            <p className="truncate text-[11px] text-muted-foreground">Workspace · {doc.status}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {pages.length > 1 && (
-            <Select value={activePageId} onValueChange={setActivePageId}>
-              <SelectTrigger className="w-[190px]">
-                <SelectValue placeholder="Active page" />
-              </SelectTrigger>
-              <SelectContent>
-                {pages.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    Active: Page {p.page_number} · {p.status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {!isViewer && pagesWithContent.length > 0 && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleExport('docx')}
-                disabled={busyAction === 'export'}
-              >
-                <FileDown className="h-4 w-4 mr-1" /> DOCX
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleExport('pdf')}
-                disabled={busyAction === 'export'}
-              >
-                <FileDown className="h-4 w-4 mr-1" /> PDF
-              </Button>
-            </>
-          )}
-        </div>
+        {canExport && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={busyAction === 'export'}>
+              <FileDown className="mr-1 h-4 w-4" /> DOCX
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={busyAction === 'export'}>
+              <FileDown className="mr-1 h-4 w-4" /> PDF
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* ── Pipeline zone: the active page being processed ────────────────────── */}
-      {activePage ? (
-        <>
-          {activePage.processing_error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Processing error</AlertTitle>
-              <AlertDescription>{activePage.processing_error}</AlertDescription>
-            </Alert>
-          )}
+      <div className="flex flex-1 flex-col lg:flex-row lg:overflow-hidden">
+        {/* ── Left pane: page thumbnails ────────────────────────────────────── */}
+        <aside className="flex shrink-0 flex-col border-b border-border bg-muted/30 lg:w-56 lg:border-b-0 lg:border-r lg:overflow-y-auto">
+          <div className="flex items-center justify-between px-4 pb-2 pt-4">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Pages
+            </span>
+            <span className="rounded bg-primary/10 px-1.5 font-mono text-xs font-bold text-primary">
+              {pages.length}
+            </span>
+          </div>
 
-          {/* Denoise panel: original + current denoised */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Processing — Page {activePage.page_number}</CardTitle>
-                  <CardDescription>
-                    Denoise → OCR → restore this page
-                    {activePage.denoise_version > 0 && ` · denoise v${activePage.denoise_version}`}
-                  </CardDescription>
-                </div>
-                <Badge variant="outline">{activePage.status}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <figure className="space-y-1">
-                  <figcaption className="text-xs text-muted-foreground">
-                    Original
-                    {activePage.width && activePage.height
-                      ? ` · ${activePage.width}×${activePage.height}px`
-                      : ''}
-                  </figcaption>
-                  <div className="rounded-lg overflow-hidden bg-muted border border-border">
+          <div className="flex gap-3 overflow-x-auto px-4 pb-3 lg:flex-col lg:gap-2 lg:overflow-x-visible">
+            {pages.map((p) => {
+              const isActive = p.id === activePageId
+              const ocrDone = pageHasContent(p)
+              return (
+                <button
+                  type="button"
+                  key={p.id}
+                  onClick={() => {
+                    setActivePageId(p.id)
+                    setShowUpload(false)
+                  }}
+                  className={cn(
+                    'group w-32 shrink-0 rounded-xl border bg-card p-2 text-left transition-all hover:border-primary/40 lg:w-auto',
+                    isActive ? 'border-primary ring-2 ring-primary/10' : 'border-border',
+                  )}
+                >
+                  <div className="relative mb-1.5 h-24 overflow-hidden rounded-lg bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={activePage.original_url}
-                      alt="Original"
-                      className="w-full max-h-[360px] object-contain bg-white"
-                    />
+                    <img src={pageThumb(p)} alt={`Page ${p.page_number}`} className="h-full w-full object-cover" />
+                    <span className="absolute left-1.5 top-1.5 rounded bg-black/50 px-1.5 font-mono text-[9px] font-bold text-white">
+                      P.{p.page_number}
+                    </span>
+                    <span className="absolute right-1.5 top-1.5">
+                      {ocrDone ? (
+                        <CheckCircle2 className="h-4 w-4 text-success" />
+                      ) : p.denoised_url ? (
+                        <span className="rounded bg-warning px-1 py-px text-[8px] font-bold uppercase text-white">
+                          Denoised
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
-                </figure>
-                <figure className="space-y-1">
-                  <figcaption className="text-xs text-muted-foreground">
-                    Denoised (current)
-                    {hasDenoised && activePage.width && activePage.height
-                      ? ` · ${activePage.width}×${activePage.height}px · same size`
-                      : ''}
-                  </figcaption>
-                  <div className="rounded-lg overflow-hidden bg-muted border border-border flex items-center justify-center min-h-[120px]">
-                    {status === 'denoising' ? (
-                      <ProcessingIndicator label="Denoising…" hint="Running the U-Net model." />
-                    ) : hasDenoised ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={activePage.denoised_url!}
-                        alt="Denoised"
-                        className="w-full max-h-[360px] object-contain bg-white"
-                      />
-                    ) : (
-                      <p className="p-8 text-center text-sm text-muted-foreground">Not denoised yet</p>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-foreground">P.{p.page_number}</span>
+                    <span className="text-[9px] capitalize text-muted-foreground">{p.status}</span>
                   </div>
-                </figure>
-              </div>
+                </button>
+              )
+            })}
+          </div>
 
-              {/* Review: before/after wipe — confirms the page is restored while
-                  keeping its original dimensions. */}
-              {hasDenoised && status !== 'denoising' && (
-                <div className="space-y-1 pt-1">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Review — drag to compare before / after
-                  </p>
-                  <BeforeAfterCompare before={activePage.original_url} after={activePage.denoised_url!} />
-                </div>
-              )}
+          <div className="mt-auto p-4">
+            <Button
+              variant="outline"
+              className="w-full border-dashed"
+              onClick={() => {
+                setShowUpload(true)
+                setCenterView('image')
+              }}
+              disabled={isViewerAtLimit}
+            >
+              <UploadCloud className="mr-2 h-4 w-4" />
+              Add page
+            </Button>
+          </div>
+        </aside>
 
-              <div className="flex flex-wrap gap-2">
-                {!hasDenoised ? (
-                  <Button onClick={() => handleDenoise('original')} disabled={!canDenoise || isBusy}>
-                    {busyAction === 'denoise' ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4 mr-2" />
-                    )}
-                    Run Denoise
+        {/* ── Center pane: canvas ───────────────────────────────────────────── */}
+        <main className="flex min-h-[50vh] flex-1 flex-col bg-canvas lg:overflow-y-auto">
+          {/* Canvas toolbar */}
+          <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-card/80 px-4 py-2 backdrop-blur-sm">
+            <div className="inline-flex rounded-lg border border-border bg-card p-0.5 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUpload(false)
+                  setCenterView('image')
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition-colors',
+                  centerView === 'image' && !showUpload ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <ImageIcon className="h-3.5 w-3.5" /> Image
+              </button>
+              <button
+                type="button"
+                disabled={!hasContent && pagesWithContent.length === 0}
+                onClick={() => {
+                  setShowUpload(false)
+                  setCenterView('text')
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition-colors disabled:opacity-40',
+                  centerView === 'text' && !showUpload ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Type className="h-3.5 w-3.5" /> Text
+              </button>
+            </div>
+            {activePage && (
+              <Badge variant="outline" className="font-mono text-[10px]">
+                {activePage.status}
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex-1 p-4 lg:p-6">
+            {activePage?.processing_error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Processing error</AlertTitle>
+                <AlertDescription>{activePage.processing_error}</AlertDescription>
+              </Alert>
+            )}
+
+            {showUpload ? (
+              <Card className="mx-auto max-w-xl">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base font-display">
+                    <Plus className="h-4 w-4" /> Add next page
+                  </CardTitle>
+                  <CardDescription>
+                    We validate the image is a document, then it becomes the active page.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PageUploadPanel
+                    mode={{ kind: 'existing', id: docId }}
+                    disabled={isViewerAtLimit}
+                    disabledReason="You've used all 10 free images. Upgrade to keep uploading."
+                    onComplete={handlePageRegistered}
+                  />
+                  <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => setShowUpload(false)}>
+                    Cancel
                   </Button>
-                ) : (
-                  <>
-                    <Button asChild variant="outline">
-                      <a href={activePage.denoised_url!} target="_blank" rel="noopener noreferrer">
-                        <Download className="h-4 w-4 mr-2" /> Download Denoised
-                      </a>
-                    </Button>
-                    <Button variant="outline" onClick={() => handleDenoise('current_denoised')} disabled={isBusy}>
-                      {busyAction === 'denoise' ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                      )}
-                      Not good? Denoise again
-                    </Button>
-                    <Button onClick={handleRunOcr} disabled={!canOcr || isBusy}>
-                      {busyAction === 'ocr' || status === 'ocr_running' ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <ScanText className="h-4 w-4 mr-2" />
-                      )}
-                      Run OCR
-                    </Button>
-                  </>
+                </CardContent>
+              </Card>
+            ) : !activePage ? (
+              <div className="flex h-full flex-col items-center justify-center text-center">
+                <ImageIcon className="mb-3 h-12 w-12 text-muted-foreground/50" />
+                <p className="text-muted-foreground">No pages yet</p>
+                <Button className="mt-4" onClick={() => setShowUpload(true)}>
+                  <UploadCloud className="mr-2 h-4 w-4" /> Upload the first page
+                </Button>
+              </div>
+            ) : centerView === 'image' ? (
+              <div className="mx-auto max-w-3xl space-y-4">
+                {/* Active page image / before-after */}
+                <div className="overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm">
+                  {status === 'denoising' ? (
+                    <div className="flex min-h-[320px] items-center justify-center">
+                      <ProcessingIndicator label="Denoising…" hint="Running the U-Net model." />
+                    </div>
+                  ) : hasDenoised ? (
+                    <div className="space-y-2">
+                      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Drag to compare — before / after
+                        {activePage.denoise_version > 0 && ` · v${activePage.denoise_version}`}
+                      </p>
+                      <BeforeAfterCompare before={activePage.original_url} after={activePage.denoised_url!} />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Original{activePage.width && activePage.height ? ` · ${activePage.width}×${activePage.height}px` : ''}
+                      </p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={activePage.original_url}
+                        alt="Original"
+                        className="max-h-[60vh] w-full rounded-lg bg-white object-contain"
+                      />
+                    </div>
+                  )}
+                </div>
+                {status === 'ocr_running' && (
+                  <Card>
+                    <CardContent className="py-6">
+                      <ProcessingIndicator
+                        label="Running OCR (Tesseract layout)…"
+                        hint="Reconstructing the page into paragraphs, lines and words."
+                      />
+                    </CardContent>
+                  </Card>
                 )}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* OCR running indicator */}
-          {status === 'ocr_running' && (
-            <Card>
-              <CardContent className="py-6">
-                <ProcessingIndicator
-                  label="Running OCR (Tesseract layout)…"
-                  hint="Reconstructing the page into paragraphs, lines and words."
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* LLM correction for the active page */}
-          {showActiveEditor && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">LLM correction — Page {activePage.page_number}</CardTitle>
-                <CardDescription>
-                  {status === 'llm_running'
-                    ? 'Reviewing suspicious words…'
-                    : corrections.length > 0
-                      ? `${pendingCount} pending · ${corrections.length} total`
-                      : 'Optional — only suggests fixes, never edits directly'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button onClick={handleRunLlm} disabled={!canLlm || isBusy} variant="secondary">
-                  {busyAction === 'llm' || status === 'llm_running' ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  Run LLM Correction
-                </Button>
-
-                {isViewer && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" /> Free viewer plan — LLM uses NVIDIA Nemotron Nano
-                    (free, OpenRouter); export disabled.
-                  </p>
-                )}
-
-                <div className="space-y-2 max-h-[360px] overflow-auto">
-                  {status === 'llm_running' && (
-                    <ProcessingIndicator
-                      label="Generating corrections…"
-                      hint={isViewer ? 'Using NVIDIA Nemotron Nano (free, OpenRouter).' : 'Using OpenAI ChatGPT.'}
-                    />
-                  )}
-                  {corrections.map((c) => (
-                    <motion.div
-                      key={c.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        'p-3 rounded-lg border',
-                        c.status === 'pending' && 'border-amber-300 bg-amber-50/40',
-                        c.status === 'kept' && 'border-emerald-300 bg-emerald-50/40',
-                        c.status === 'undone' && 'border-border bg-muted/30 opacity-70',
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm flex flex-wrap items-center gap-2">
-                            <span className="line-through text-muted-foreground">{c.original_text}</span>
-                            <span className="text-foreground font-medium">→ {c.suggested_text}</span>
-                          </div>
-                          {c.reason && <p className="text-xs text-muted-foreground mt-1">{c.reason}</p>}
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-[10px]">
-                              {c.llm_provider}
+            ) : (
+              /* Text view — restored manuscript across all pages (incl. not-yet-OCR'd) */
+              <div className="mx-auto max-w-3xl space-y-6">
+                {pages.length === 0 ? (
+                  <div className="flex h-full flex-col items-center justify-center py-16 text-center">
+                    <Type className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                    <p className="text-muted-foreground">No pages yet.</p>
+                  </div>
+                ) : (
+                  pages.map((p) => {
+                    const hasOcr = pageHasContent(p)
+                    return (
+                      <section
+                        key={p.id}
+                        ref={(el) => {
+                          sectionRefs.current[p.id] = el
+                        }}
+                        className={cn(
+                          'scroll-mt-16 rounded-xl border bg-card p-4 transition-colors',
+                          p.id === activePageId ? 'border-primary/40 ring-1 ring-primary/10' : 'border-border',
+                        )}
+                      >
+                        <div className="mb-2 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => setActivePageId(p.id)}
+                            className="font-mono text-[11px] font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:text-primary"
+                          >
+                            Page {p.page_number}
+                          </button>
+                          {p.id === activePageId ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Active
                             </Badge>
-                            <Badge variant="outline" className="text-[10px] uppercase">
-                              {c.status}
-                            </Badge>
-                          </div>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => setActivePageId(p.id)}>
+                              Make active
+                            </Button>
+                          )}
                         </div>
-                        {c.status !== 'undone' && (
-                          <div className="flex gap-1 shrink-0">
-                            {c.status !== 'kept' && (
-                              <Button size="sm" onClick={() => reviewSuggestion(c.id, 'keep')} className="h-7 px-2">
-                                <Check className="h-3 w-3 mr-1" /> Keep
-                              </Button>
-                            )}
+                        {hasOcr ? (
+                          <CorrectionReviewEditor
+                            value={p.tiptap_json}
+                            lowConfidenceWords={ocrByPage[p.id]?.low_confidence_words ?? []}
+                            revision={revisionByPage[p.id] ?? 0}
+                            editable
+                            onSave={(tiptap) => handleSaveTiptap(p.id, tiptap)}
+                          />
+                        ) : (
+                          /* Page clicked but not OCR'd yet — guide the user to run OCR. */
+                          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
+                            <ScanText className="h-8 w-8 text-muted-foreground/50" />
+                            <div>
+                              <p className="text-sm font-medium text-foreground">Not extracted yet</p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {p.denoised_url
+                                  ? 'This page is denoised — run OCR to read its text.'
+                                  : 'Denoise this page, then run OCR to read its text.'}
+                              </p>
+                            </div>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => reviewSuggestion(c.id, 'undo')}
-                              className="h-7 px-2"
+                              onClick={() => {
+                                setActivePageId(p.id)
+                                setCenterView('image')
+                              }}
                             >
-                              <X className="h-3 w-3 mr-1" /> Undo
+                              <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> Open in Image view
                             </Button>
                           </div>
                         )}
-                      </div>
-                    </motion.div>
-                  ))}
-                  {corrections.length === 0 && status !== 'llm_running' && (
-                    <p className="text-xs text-muted-foreground">
-                      No suggestions yet. Run LLM correction, or skip straight to export.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      ) : (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>No pages yet</AlertTitle>
-          <AlertDescription>Upload the first page below to begin.</AlertDescription>
-        </Alert>
-      )}
-
-      {/* ── Manuscript: all pages, in order, continuous ───────────────────────── */}
-      {pagesWithContent.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Document</CardTitle>
-            <CardDescription>
-              All pages in order — each new page continues below. Low-confidence words are underlined;
-              edit any page and save.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {pagesWithContent.map((p) => (
-              <section
-                key={p.id}
-                className={cn(
-                  'space-y-2 rounded-lg transition-colors',
-                  p.id === activePageId && 'ring-2 ring-primary/30 p-3 -m-0',
+                      </section>
+                    )
+                  })
                 )}
-              >
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setActivePageId(p.id)}
-                    className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    —— Page {p.page_number} ——
-                  </button>
-                  {p.id === activePageId ? (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Active
-                    </Badge>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => setActivePageId(p.id)}
-                    >
-                      Make active
-                    </Button>
-                  )}
-                </div>
-                <CorrectionReviewEditor
-                  value={p.tiptap_json}
-                  lowConfidenceWords={ocrByPage[p.id]?.low_confidence_words ?? []}
-                  revision={revisionByPage[p.id] ?? 0}
-                  editable
-                  onSave={(tiptap) => handleSaveTiptap(p.id, tiptap)}
-                />
-              </section>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+              </div>
+            )}
+          </div>
+        </main>
 
-      {/* ── Add the next page (continues the document) ────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Plus className="h-4 w-4" /> Add next page
-          </CardTitle>
-          <CardDescription>
-            Upload the next page — it becomes the active page and its restored text continues below the
-            others.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PageUploadPanel
-            mode={{ kind: 'existing', id: docId }}
-            disabled={isViewerAtLimit}
-            disabledReason="You've used all 10 free images. Upgrade to keep uploading."
-            onComplete={handlePageRegistered}
-          />
-        </CardContent>
-      </Card>
+        {/* ── Right pane: process pipeline ──────────────────────────────────── */}
+        <aside className="flex shrink-0 flex-col border-t border-border bg-card lg:w-80 lg:border-t-0 lg:border-l lg:overflow-y-auto">
+          <div className="border-b border-border px-5 py-3">
+            <h3 className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" /> Processing pipeline
+            </h3>
+          </div>
+
+          <div className="space-y-4 p-5">
+            {!activePage ? (
+              <p className="text-sm text-muted-foreground">Upload a page to start the pipeline.</p>
+            ) : (
+              <>
+                {/* Step 1 — Denoise */}
+                <PipelineStep
+                  step={1}
+                  title="Denoise"
+                  description="Clean up the image to improve OCR accuracy."
+                  state={denoiseState}
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {!hasDenoised ? (
+                      <Button size="sm" onClick={() => handleDenoise('original')} disabled={!canDenoise || isBusy}>
+                        {busyAction === 'denoise' ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Run Denoise
+                      </Button>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={activePage.denoised_url!} target="_blank" rel="noopener noreferrer">
+                            <Download className="mr-1.5 h-3.5 w-3.5" /> Download
+                          </a>
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDenoise('current_denoised')} disabled={isBusy}>
+                          {busyAction === 'denoise' ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Again
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </PipelineStep>
+
+                {/* Step 2 — OCR */}
+                <PipelineStep
+                  step={2}
+                  title="Extract text (OCR)"
+                  description="Read the text content from the cleaned image."
+                  state={ocrState}
+                >
+                  <Button size="sm" onClick={handleRunOcr} disabled={!canOcr || isBusy}>
+                    {busyAction === 'ocr' || status === 'ocr_running' ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ScanText className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Run OCR
+                  </Button>
+                </PipelineStep>
+
+                {/* Step 3 — LLM correction */}
+                <PipelineStep
+                  step={3}
+                  title="AI correction"
+                  description="Optional — suggests fixes for low-confidence words. Never edits directly."
+                  state={llmState}
+                >
+                  <div className="space-y-3">
+                    <Button size="sm" variant="secondary" onClick={handleRunLlm} disabled={!canLlm || isBusy}>
+                      {busyAction === 'llm' || status === 'llm_running' ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Run AI correction
+                    </Button>
+
+                    {isViewer && (
+                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Sparkles className="h-3 w-3" /> Free plan — uses a local model (Ollama); export disabled.
+                      </p>
+                    )}
+
+                    {status === 'llm_running' && (
+                      <ProcessingIndicator
+                        label="Generating corrections…"
+                        hint={isViewer ? 'Using a local model (Ollama).' : 'Using OpenAI ChatGPT.'}
+                      />
+                    )}
+
+                    {corrections.length > 0 ? (
+                      <div className="rounded-lg border border-border bg-card p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="font-mono text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            {pendingCount} pending · {corrections.length} total
+                          </p>
+                          {pendingCount === 0 && <CheckCircle2 className="h-4 w-4 text-success" />}
+                        </div>
+                        <Button size="sm" className="mt-2 w-full" onClick={() => setReviewOpen(true)}>
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                          Review {corrections.length} suggestion{corrections.length !== 1 ? 's' : ''}
+                        </Button>
+                      </div>
+                    ) : (
+                      status !== 'llm_running' &&
+                      llmState !== 'locked' && (
+                        <p className="text-[11px] text-muted-foreground">
+                          No suggestions yet. Run AI correction, or skip straight to export.
+                        </p>
+                      )
+                    )}
+                  </div>
+                </PipelineStep>
+              </>
+            )}
+          </div>
+
+          {/* Export footer */}
+          <div className="mt-auto border-t border-border p-5">
+            {isViewer ? (
+              <p className="text-center text-[11px] text-muted-foreground">
+                Export (Word/PDF) is available on paid plans.
+              </p>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => handleExport('docx')}
+                  disabled={!canExport || busyAction === 'export'}
+                >
+                  {busyAction === 'export' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
+                  Word
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => handleExport('pdf')}
+                  disabled={!canExport || busyAction === 'export'}
+                >
+                  {busyAction === 'export' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
+                  PDF
+                </Button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      <CorrectionReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        corrections={corrections}
+        onReview={reviewSuggestion}
+        onKeepAll={handleKeepAll}
+        providerLabel={isViewer ? 'Ollama (free)' : 'ChatGPT (GPT-4o)'}
+        busy={busyAction !== null}
+      />
     </div>
   )
 }

@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Upload, FileImage, X, Loader2, Wand2, AlertCircle } from 'lucide-react'
+import { Upload, FileImage, X, Loader2, Wand2, AlertCircle, ImageOff, ScanSearch } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useUploadStore } from '@/lib/upload-store'
@@ -82,7 +82,7 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
   // The upload store is a global singleton, so a failed/complete attempt from a
   // previous mount can leak its error/result here. Clear it on mount.
   useEffect(() => {
-    if (upload.step === 'error' || upload.step === 'complete') upload.reset()
+    if (['error', 'complete', 'rejected'].includes(upload.step)) upload.reset()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -107,7 +107,9 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
     }
   }, [upload.step, upload.resultPage, upload.documentId, onComplete, reset])
 
-  const isBusy = ['signing', 'uploading', 'registering'].includes(upload.step)
+  const isBusy = ['signing', 'uploading', 'validating', 'registering'].includes(upload.step)
+  const isRejected = upload.step === 'rejected'
+  const rejectionPct = upload.rejection ? Math.round(upload.rejection.confidence * 100) : null
 
   return (
     <div className="space-y-3">
@@ -127,7 +129,18 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
         </Alert>
       )}
 
-      {!file && !isBusy ? (
+      {isRejected && (
+        <Alert variant="destructive">
+          <ImageOff className="h-4 w-4" />
+          <AlertTitle>This doesn&apos;t look like a document</AlertTitle>
+          <AlertDescription>
+            We&apos;re {rejectionPct}% sure this isn&apos;t a document page, so we didn&apos;t add it.
+            Please upload a clear photo or scan of a document page and try again.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!file && !isBusy && !isRejected ? (
         <div
           {...getRootProps()}
           className={cn(
@@ -192,7 +205,11 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {upload.step === 'validating' ? (
+                    <ScanSearch className="w-4 h-4 animate-pulse text-primary" />
+                  ) : (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
                   {upload.statusMessage || 'Uploading…'}
                 </span>
                 <span className="font-medium">{upload.progress}%</span>
@@ -201,7 +218,14 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
             </div>
           ) : (
             <AnimatePresence mode="wait">
-              {upload.step === 'error' ? (
+              {isRejected ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <Button variant="outline" className="w-full" onClick={reset}>
+                    <ImageOff className="mr-2 h-4 w-4" />
+                    Choose another image
+                  </Button>
+                </motion.div>
+              ) : upload.step === 'error' ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <Button variant="outline" className="w-full" onClick={reset}>
                     Try again

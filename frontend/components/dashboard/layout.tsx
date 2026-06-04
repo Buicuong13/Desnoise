@@ -104,17 +104,22 @@ export function DashboardSidebar() {
   return (
     <Sidebar variant="inset">
       <SidebarHeader className="border-b border-sidebar-border">
-        <Link href="/" className="flex items-center gap-2 px-2 py-1">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+        {/* Logged-in users land on their dashboard, not the marketing page. */}
+        <Link href="/dashboard" className="flex items-center gap-2.5 px-2 py-1.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gradient-start to-gradient-end flex items-center justify-center shadow-sm">
             <FileText className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-lg text-sidebar-foreground">DocRecover</span>
+          <span className="font-display font-extrabold text-lg tracking-tight text-sidebar-foreground">
+            DocRecover
+          </span>
         </Link>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {userNavItems.map((item) => (
@@ -139,7 +144,9 @@ export function DashboardSidebar() {
           <>
             <SidebarSeparator />
             <SidebarGroup>
-              <SidebarGroupLabel>Admin</SidebarGroupLabel>
+              <SidebarGroupLabel className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Admin
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {adminNavItems.map((item) => (
@@ -233,13 +240,14 @@ export function DashboardSidebar() {
 export function DashboardHeader() {
   const { user } = useAuth()
   return (
-    <header className="flex h-14 items-center gap-4 border-b border-border bg-background px-4 lg:px-6">
+    <header className="flex h-14 items-center gap-4 border-b border-border bg-card/80 backdrop-blur-sm px-4 lg:px-6">
       <SidebarTrigger className="-ml-1" />
       <div className="flex-1" />
       {user?.role === 'viewer' && (
-        <Badge variant="secondary" className="text-xs">
-          Free viewer · {user.images_used}/10 images
-        </Badge>
+        <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+          Free viewer · <span className="font-mono">{user.images_used}/10</span> images
+        </span>
       )}
       <Button variant="default" size="sm" asChild>
         <Link href="/dashboard/editor/new">

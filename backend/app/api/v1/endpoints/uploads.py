@@ -18,7 +18,14 @@ from app.models.document import Document
 from app.models.enums import PageStatus, UserRole
 from app.models.page import Page
 from app.schemas.page import PageOut
-from app.schemas.upload import RegisterUploadIn, SignatureIn, SignatureOut
+from app.schemas.upload import (
+    RegisterUploadIn,
+    SignatureIn,
+    SignatureOut,
+    ValidateUploadIn,
+    ValidateUploadOut,
+)
+from app.services.classification_service import classify_upload
 from app.storage import get_storage
 from app.storage.cloudinary_backend import CloudinaryStorage
 
@@ -74,6 +81,22 @@ def create_upload_signature(
     )
 
 
+@router.post("/uploads/validate", response_model=ValidateUploadOut)
+def validate_upload(
+    payload: ValidateUploadIn, user: CurrentUser, db: Session = Depends(get_db)
+) -> ValidateUploadOut:
+    """Classify a freshly-uploaded image as document / non-document.
+
+    Called between the direct Cloudinary upload and `register-upload`. If the
+    image is not a document, the frontend asks the user to re-upload and never
+    registers a page (no quota spent). Fail-open: a model problem returns
+    is_document=True so the pipeline is never hard-blocked.
+    """
+    _get_owned_document(payload.workspace_id, user, db)
+    result = classify_upload(payload.cloudinary_public_id or payload.image_url)
+    return ValidateUploadOut(**result)
+
+
 @router.post(
     "/documents/{doc_id}/pages/register-upload",
     status_code=status.HTTP_201_CREATED,
@@ -107,6 +130,8 @@ def register_upload(
         width=payload.width,
         height=payload.height,
         status=PageStatus.uploaded,
+        doc_class=payload.doc_class,
+        doc_class_confidence=payload.doc_class_confidence,
     )
     db.add(page)
     doc.total_pages = (doc.total_pages or 0) + 1

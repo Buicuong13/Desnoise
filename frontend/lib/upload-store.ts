@@ -13,17 +13,32 @@ import { create } from 'zustand'
 import { api, ApiError } from './api'
 import type { ApiPage } from './api/types'
 
-export type UploadStep = 'idle' | 'signing' | 'uploading' | 'registering' | 'complete' | 'error'
+export type UploadStep =
+  | 'idle'
+  | 'signing'
+  | 'uploading'
+  | 'validating'
+  | 'rejected'
+  | 'registering'
+  | 'complete'
+  | 'error'
 
 export type WorkspaceChoice =
   | { kind: 'existing'; id: string }
   | { kind: 'new'; title: string }
+
+export interface UploadRejection {
+  /** 0..1 confidence that the image is NOT a document. */
+  confidence: number
+  probDocuments: number
+}
 
 interface UploadState {
   step: UploadStep
   progress: number
   statusMessage: string
   error: string | null
+  rejection: UploadRejection | null
   resultPage: ApiPage | null
   documentId: string | null
   previewDataUrl: string | null
@@ -44,6 +59,7 @@ const initial: UploadState = {
   progress: 0,
   statusMessage: '',
   error: null,
+  rejection: null,
   resultPage: null,
   documentId: null,
   previewDataUrl: null,
@@ -93,11 +109,32 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
         signed.upload_url,
         signed.fields,
         file,
-        (pct) => set({ progress: 20 + Math.round(pct * 0.65) }),
+        (pct) => set({ progress: 20 + Math.round(pct * 0.6) }),
       )
 
-      // 4. Register the page metadata with the backend.
-      set({ step: 'registering', progress: 90, statusMessage: 'Saving page…' })
+      // 4. Validate the image is a document page (MobileNetV3 gate). If it is
+      //    not a document we STOP here — never register, never spend quota.
+      set({ step: 'validating', progress: 85, statusMessage: 'Checking the image is a document…' })
+      const verdict = await api.uploads.validate({
+        workspace_id: documentId,
+        image_url: result.secure_url,
+        cloudinary_public_id: result.public_id,
+      })
+      if (!verdict.is_document) {
+        set({
+          step: 'rejected',
+          progress: 100,
+          statusMessage: 'Not a document',
+          rejection: {
+            confidence: verdict.confidence,
+            probDocuments: verdict.prob_documents,
+          },
+        })
+        return
+      }
+
+      // 5. Register the page metadata with the backend.
+      set({ step: 'registering', progress: 92, statusMessage: 'Saving page…' })
       const page = await api.uploads.register(documentId, {
         original_image_url: result.secure_url,
         cloudinary_public_id: result.public_id,
@@ -106,6 +143,8 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
         width: result.width,
         height: result.height,
         format: result.format,
+        doc_class: verdict.label,
+        doc_class_confidence: verdict.confidence,
       })
 
       set({

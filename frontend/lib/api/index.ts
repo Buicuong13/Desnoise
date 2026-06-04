@@ -20,11 +20,13 @@ export const api = {
     list: documents.listDocuments,
     create: documents.createDocument,
     get: documents.getDocument,
+    update: documents.updateDocument,
     archive: documents.archiveDocument,
   },
   uploads: {
     sign: uploads.getSignature,
     toCloudinary: uploads.uploadToCloudinary,
+    validate: uploads.validateUpload,
     register: uploads.registerUpload,
   },
   pages: {

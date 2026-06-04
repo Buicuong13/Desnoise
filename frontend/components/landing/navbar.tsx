@@ -27,10 +27,10 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gradient-start to-gradient-end flex items-center justify-center shadow-sm">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl text-foreground">DocRecover</span>
+            <span className="font-display font-extrabold text-xl tracking-tight text-foreground">DocRecover</span>
           </Link>
           
           {/* Desktop Nav */}

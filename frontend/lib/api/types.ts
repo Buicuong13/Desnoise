@@ -41,6 +41,10 @@ export interface ApiDocument {
   id: string
   title: string
   description: string | null
+  /** Icon key (see lib/workspace-icons). */
+  icon: string | null
+  /** Color key (see lib/workspace-icons). */
+  color: string | null
   status: DocumentStatus
   total_pages: number
   created_at: string
@@ -71,6 +75,9 @@ export interface ApiPage {
   width: number | null
   height: number | null
   file_size_kb: number | null
+  /** Document classifier result captured at upload: 'document' | 'non_document' | 'unknown'. */
+  doc_class: string | null
+  doc_class_confidence: number | null
   ocr_plain_text: string | null
   tiptap_json: TiptapDoc | null
   final_text: string | null
@@ -100,6 +107,16 @@ export interface CloudinaryUploadResult {
   height: number
   bytes: number
   format: string
+}
+
+/** Returned by POST /uploads/validate — document vs non-document gate. */
+export interface ValidateUploadResult {
+  is_document: boolean
+  label: 'document' | 'non_document' | 'unknown'
+  confidence: number
+  prob_documents: number
+  prob_non_documents: number
+  threshold: number
 }
 
 export type CorrectionStatus = 'pending' | 'kept' | 'undone'

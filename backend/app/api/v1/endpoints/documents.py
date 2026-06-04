@@ -10,7 +10,7 @@ from app.core.exceptions import NotFound, QuotaExceeded
 from app.database.session import get_db
 from app.models.document import Document
 from app.models.enums import DocumentStatus, UserRole
-from app.schemas.document import DocumentCreate, DocumentOut
+from app.schemas.document import DocumentCreate, DocumentOut, DocumentUpdate
 
 router = APIRouter()
 
@@ -54,6 +54,8 @@ def create_workspace(
         user_id=user.id,
         title=payload.title,
         description=payload.description,
+        icon=payload.icon,
+        color=payload.color,
         status=DocumentStatus.draft,
     )
     db.add(doc)
@@ -65,6 +67,21 @@ def create_workspace(
 @router.get("/{doc_id}", response_model=DocumentOut)
 def get_workspace(doc_id: UUID, user: CurrentUser, db: Session = Depends(get_db)) -> Document:
     return _get_owned_document(doc_id, user, db)
+
+
+@router.patch("/{doc_id}", response_model=DocumentOut)
+def update_workspace(
+    doc_id: UUID, payload: DocumentUpdate, user: CurrentUser, db: Session = Depends(get_db)
+) -> Document:
+    """Rename / edit description / change icon & color (only provided fields)."""
+    doc = _get_owned_document(doc_id, user, db)
+    data = payload.model_dump(exclude_unset=True)
+    for field in ("title", "description", "icon", "color"):
+        if field in data:
+            setattr(doc, field, data[field])
+    db.commit()
+    db.refresh(doc)
+    return doc
 
 
 @router.patch("/{doc_id}/ui-state")

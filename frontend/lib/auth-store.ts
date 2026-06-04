@@ -35,6 +35,8 @@ interface AuthState {
 
 interface AuthActions {
   hydrate: () => Promise<void>
+  /** Re-fetch the current user (e.g. after an upload changes `images_used`). */
+  refreshUser: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, fullName?: string) => Promise<void>
   logout: () => Promise<void>
@@ -81,6 +83,16 @@ export const useAuth = create<AuthStore>((set) => ({
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.replace('/login')
       }
+    }
+  },
+
+  refreshUser: async () => {
+    if (!getStoredToken()) return
+    try {
+      const user = await api.auth.me()
+      set({ user, isAuthenticated: true })
+    } catch {
+      // Best-effort — keep the current user on a transient failure.
     }
   },
 

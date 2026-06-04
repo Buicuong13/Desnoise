@@ -1,8 +1,9 @@
 """LangChain LCEL chain for OCR correction.
 
-The chain picks its underlying LLM by **role**:
+The chain picks its underlying LLM by **role** (see `app.ai.llm.provider`):
     user/admin → OpenAI (paid)
-    viewer     → NVIDIA Nemotron Nano (free) on OpenRouter
+    viewer     → free tier, configurable via VIEWER_LLM_PROVIDER
+                 (default 'ollama' → local/cloud Ollama; or 'openrouter_qwen')
 
 The chain takes a `{context, original}` dict and returns a single
 `CorrectionSuggestion` (Pydantic-parsed).
@@ -29,7 +30,17 @@ def _build_llm(provider: LLMProvider) -> ChatOpenAI:
             temperature=0.1,
         )
 
-    # viewer / fallback → OpenRouter free model (NVIDIA Nemotron Nano)
+    if provider == LLMProvider.ollama:
+        # Local/Cloud Ollama via its OpenAI-compatible endpoint. The api_key is
+        # ignored by Ollama but ChatOpenAI requires a non-empty value.
+        return ChatOpenAI(
+            model=settings.OLLAMA_MODEL,
+            api_key=settings.OLLAMA_API_KEY or "ollama",
+            base_url=settings.OLLAMA_BASE_URL,
+            temperature=0.1,
+        )
+
+    # openrouter_qwen → OpenRouter free model
     if not settings.OPENROUTER_API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY not configured")
     return ChatOpenAI(
@@ -41,11 +52,11 @@ def _build_llm(provider: LLMProvider) -> ChatOpenAI:
 
 
 def get_model_name(provider: LLMProvider) -> str:
-    return (
-        settings.OPENAI_MODEL
-        if provider == LLMProvider.openai
-        else settings.OPENROUTER_QWEN_MODEL
-    )
+    if provider == LLMProvider.openai:
+        return settings.OPENAI_MODEL
+    if provider == LLMProvider.ollama:
+        return settings.OLLAMA_MODEL
+    return settings.OPENROUTER_QWEN_MODEL
 
 
 def build_chain(provider: LLMProvider) -> Runnable:

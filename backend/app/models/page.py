@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,6 +42,12 @@ class Page(UUIDPKMixin, TimestampMixin, Base):
     file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Document classifier result captured at upload time (informational; the
+    # actual gate happens in POST /uploads/validate before the page is created).
+    # 'document' | 'non_document' | 'unknown'.
+    doc_class: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    doc_class_confidence: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
 
     # Document-layout OCR result (spec §6.2): block → paragraph → line → word.
     ocr_document_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

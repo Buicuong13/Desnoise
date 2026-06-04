@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     # Optional override; empty -> app/checkpoints/denoising/best_generator.weights.h5
     DENOISING_WEIGHTS_PATH: str = ""
 
+    # Document classifier (MobileNetV3-Small) — validates that an uploaded image
+    # is a document page before the pipeline runs. Fail-open if disabled/missing.
+    CLASSIFIER_ENABLED: bool = True
+    CLASSIFIER_IMAGE_SIZE: int = 256
+    # Empty -> app/checkpoints/classifier/best_mobilenetv3_small_document_classifier.pth
+    CLASSIFIER_WEIGHTS_PATH: str = ""
+    # Accept as a document when P(documents) >= threshold.
+    CLASSIFIER_CONFIDENCE_THRESHOLD: float = 0.5
+
     TESSERACT_CMD: str = "tesseract"
     TESSERACT_LANG: str = "vie+eng"
     # Page segmentation mode passed via `--psm`. 6 = assume a single uniform
@@ -58,6 +67,16 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     # Free model used for the viewer role (kept env-var name for compatibility).
     OPENROUTER_QWEN_MODEL: str = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+
+    # Local/Cloud Ollama (OpenAI-compatible endpoint at /v1). Used for the free
+    # (viewer) tier when VIEWER_LLM_PROVIDER='ollama'. Ollama ignores the api_key
+    # (cloud models authenticate via `ollama signin`), so a dummy value is fine.
+    OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
+    OLLAMA_MODEL: str = "gemma4:31b-cloud"
+    OLLAMA_API_KEY: str = "ollama"
+    # Which provider the free (viewer) tier uses: 'ollama' | 'openrouter_qwen' | 'openai'.
+    VIEWER_LLM_PROVIDER: str = "ollama"
+
     SUSPICIOUS_CONFIDENCE_THRESHOLD: float = 70.0
 
     VIEWER_MAX_IMAGES: int = 10

@@ -43,6 +43,7 @@ class CorrectionStatus(str, enum.Enum):
 class LLMProvider(str, enum.Enum):
     openai = "openai"
     openrouter_qwen = "openrouter_qwen"
+    ollama = "ollama"
 
 
 class ExportFormat(str, enum.Enum):

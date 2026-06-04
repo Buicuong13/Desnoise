@@ -1,15 +1,22 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Manrope, Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const geistSans = Geist({ 
-  subsets: ["latin"],
-  variable: '--font-geist-sans'
+// Triple-font system (PageFlow design system): Manrope for headlines/display,
+// Inter for body & UI, JetBrains Mono for technical labels (%, sizes, diffs).
+const fontDisplay = Manrope({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-manrope',
 })
-const geistMono = Geist_Mono({ 
-  subsets: ["latin"],
-  variable: '--font-geist-mono'
+const fontSans = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
+const fontMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains',
 })
 
 export const metadata: Metadata = {
@@ -42,7 +49,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} bg-background`}>
+    <html
+      lang="en"
+      className={`${fontDisplay.variable} ${fontSans.variable} ${fontMono.variable} bg-background`}
+    >
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

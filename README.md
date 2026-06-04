@@ -1,17 +1,6 @@
 # Thiết kế hệ thống dự án khử nhiễu + OCR + LLM Correction (Phiên bản 2)
 
-## Context
-
-Hệ thống web cho phép người dùng upload ảnh tài liệu (từng trang sách), khử nhiễu bằng model tự xây. **Sau mỗi bước, user chủ động quyết định bước tiếp theo** (pipeline KHÔNG chạy tự động xuyên suốt):
-
-1. Khử nhiễu xong → user có thể **download ảnh denoised về máy và dừng**, hoặc **bấm "Run OCR"** để trích văn bản.
-2. OCR xong → user xem kết quả; nếu thấy OCR ổn → **bỏ qua LLM**, đi thẳng tới export. Nếu chưa ổn → **bấm "Run LLM Correction"** để LLM đề xuất sửa các từ confidence thấp.
-3. LLM trả gợi ý → user review từng đề xuất bằng **Keep / Undo** giống GitHub Copilot.
-4. Cuối cùng xuất Word/PDF.
-
-Hỗ trợ **nhiều workspace song song** (mỗi cuốn sách = 1 workspace, mở workspace khác vẫn giữ nguyên state cuốn cũ).
-
-3 role: **Admin / User / Viewer**. Viewer bị giới hạn 10 ảnh, không xuất file; LLM dùng **Qwen free (OpenRouter)**. User trả phí dùng **ChatGPT API**. Admin quản lý toàn bộ.
+D:\Học tập\Nam04\Denoise_project\guide\stitch_visily_design_system
 
 Tài liệu này chốt: cấu trúc thư mục (bám theo `readme.md` đã có), lược đồ DB, luồng nghiệp vụ, và **3 sơ đồ** (Use Case, Sequence, ERD).
 

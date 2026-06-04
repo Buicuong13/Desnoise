@@ -21,6 +21,8 @@ class PageOut(BaseModel):
     width: int | None
     height: int | None
     file_size_kb: int | None
+    doc_class: str | None = None
+    doc_class_confidence: float | None = None
     ocr_plain_text: str | None = None
     tiptap_json: dict[str, Any] | None = None
     final_text: str | None = None

@@ -32,10 +32,32 @@ import {
   ArrowUpDown,
   Loader2,
   AlertCircle,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { WorkspaceDialog } from '@/components/dashboard/workspace-dialog'
+import { cn } from '@/lib/utils'
 import { api, ApiError } from '@/lib/api'
 import type { ApiDocument, DocumentStatus } from '@/lib/api/types'
+import { getWorkspaceColor, getWorkspaceIcon } from '@/lib/workspace-icons'
 
 type SortField = 'title' | 'createdAt' | 'status'
 type SortOrder = 'asc' | 'desc'
@@ -56,6 +78,31 @@ export default function HistoryPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+
+  // Edit dialog + delete confirmation.
+  const [editingDoc, setEditingDoc] = useState<ApiDocument | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [deletingDoc, setDeletingDoc] = useState<ApiDocument | null>(null)
+
+  const openEdit = (doc: ApiDocument) => {
+    setEditingDoc(doc)
+    setDialogOpen(true)
+  }
+  const handleSaved = (saved: ApiDocument) => {
+    setDocuments((prev) => prev.map((d) => (d.id === saved.id ? saved : d)))
+  }
+  const handleConfirmDelete = async () => {
+    const doc = deletingDoc
+    if (!doc) return
+    try {
+      await api.documents.archive(doc.id)
+      setDocuments((prev) => prev.filter((d) => d.id !== doc.id))
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to delete workspace')
+    } finally {
+      setDeletingDoc(null)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -233,9 +280,19 @@ export default function HistoryPage() {
                           href={`/dashboard/editor/${doc.id}`}
                           className="flex items-center gap-3 hover:text-primary transition-colors"
                         >
-                          <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                            <FileText className="h-4 w-4 text-primary" />
-                          </div>
+                          {(() => {
+                            const Icon = getWorkspaceIcon(doc.icon)
+                            return (
+                              <div
+                                className={cn(
+                                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-sm',
+                                  getWorkspaceColor(doc.color),
+                                )}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </div>
+                            )
+                          })()}
                           <div>
                             <p className="font-medium">{doc.title}</p>
                             {doc.description && (
@@ -254,12 +311,32 @@ export default function HistoryPage() {
                         {format(new Date(doc.created_at), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/dashboard/editor/${doc.id}`}>
-                            <Eye className="h-3 w-3 mr-1" />
-                            Open
-                          </Link>
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/dashboard/editor/${doc.id}`}>
+                              <Eye className="h-3 w-3 mr-1" />
+                              Open
+                            </Link>
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Workspace actions">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEdit(doc)}>
+                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeletingDoc(doc)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </motion.tr>
                   ))}
@@ -269,6 +346,34 @@ export default function HistoryPage() {
           )}
         </CardContent>
       </Card>
+
+      <WorkspaceDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        document={editingDoc}
+        onSaved={handleSaved}
+      />
+
+      <AlertDialog open={!!deletingDoc} onOpenChange={(o) => !o && setDeletingDoc(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this workspace?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{deletingDoc?.title}” will be removed from your workspaces. Its pages stay archived and
+              won’t appear in your list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

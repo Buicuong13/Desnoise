@@ -11,11 +11,12 @@ from uuid import UUID
 from sqlalchemy import delete
 
 from app.ai.llm.chains.ocr_correction_chain import build_chain, get_model_name
+from app.ai.llm.provider import resolve_llm_provider
 from app.ai.llm.schemas import CorrectionSuggestion
 from app.core.logging import get_logger
 from app.database.session import SessionLocal
 from app.models.correction import Correction
-from app.models.enums import CorrectionStatus, LLMProvider, PageStatus, UserRole
+from app.models.enums import CorrectionStatus, PageStatus, UserRole
 from app.models.ocr_word import OcrWord
 from app.models.page import Page
 from app.services.suspicious_detector_service import detect_chunks
@@ -24,14 +25,10 @@ from app.services.tiptap_service import apply_corrections
 logger = get_logger(__name__)
 
 
-def _resolve_provider(role: UserRole) -> LLMProvider:
-    return LLMProvider.openai if role in (UserRole.user, UserRole.admin) else LLMProvider.openrouter_qwen
-
-
 def llm_correct_page(page_id: str | UUID, user_role: str) -> int:
     """Run LLM correction for `page_id`. Returns the number of suggestions inserted."""
     role = UserRole(user_role)
-    provider = _resolve_provider(role)
+    provider = resolve_llm_provider(role)
     model_name = get_model_name(provider)
 
     db = SessionLocal()

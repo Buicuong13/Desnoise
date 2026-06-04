@@ -17,6 +17,11 @@ pillow==10.4.0
 opencv-python==4.10.0.84
 numpy==1.26.4
 tensorflow==2.17.0
+# Document/non-document upload classifier (MobileNetV3-Small). CPU wheels are
+# the default on Windows/Linux. If you need an explicit CPU build, install with:
+#   pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1
+torchvision==0.19.1
 pytesseract==0.3.13
 langchain==0.3.3
 langchain-openai==0.2.2

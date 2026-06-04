@@ -30,6 +30,10 @@ class Document(UUIDPKMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Workspace appearance — icon + color keys (resolved on the frontend).
+    icon: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     status: Mapped[DocumentStatus] = mapped_column(
         Enum(DocumentStatus, name="document_status"),
         default=DocumentStatus.draft,
