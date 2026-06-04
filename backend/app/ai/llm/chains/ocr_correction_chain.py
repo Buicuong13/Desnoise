@@ -21,6 +21,11 @@ from app.models.enums import LLMProvider
 
 
 def _build_llm(provider: LLMProvider) -> ChatOpenAI:
+    # Shared across providers: fail fast instead of hanging the worker on a
+    # stalled request (OpenAI SDK defaults are 600s timeout + 2 retries).
+    timeout = settings.LLM_REQUEST_TIMEOUT
+    max_retries = settings.LLM_MAX_RETRIES
+
     if provider == LLMProvider.openai:
         if not settings.OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY not configured")
@@ -28,6 +33,8 @@ def _build_llm(provider: LLMProvider) -> ChatOpenAI:
             model=settings.OPENAI_MODEL,
             api_key=settings.OPENAI_API_KEY,
             temperature=0.1,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     if provider == LLMProvider.ollama:
@@ -38,6 +45,8 @@ def _build_llm(provider: LLMProvider) -> ChatOpenAI:
             api_key=settings.OLLAMA_API_KEY or "ollama",
             base_url=settings.OLLAMA_BASE_URL,
             temperature=0.1,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     # openrouter_qwen → OpenRouter free model
@@ -48,6 +57,8 @@ def _build_llm(provider: LLMProvider) -> ChatOpenAI:
         api_key=settings.OPENROUTER_API_KEY,
         base_url=settings.OPENROUTER_BASE_URL,
         temperature=0.1,
+        timeout=timeout,
+        max_retries=max_retries,
     )
 
 

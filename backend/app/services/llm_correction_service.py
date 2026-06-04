@@ -13,10 +13,11 @@ from sqlalchemy import delete
 from app.ai.llm.chains.ocr_correction_chain import build_chain, get_model_name
 from app.ai.llm.provider import resolve_llm_provider
 from app.ai.llm.schemas import CorrectionSuggestion
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.database.session import SessionLocal
 from app.models.correction import Correction
-from app.models.enums import CorrectionStatus, PageStatus, UserRole
+from app.models.enums import CorrectionStatus, LLMProvider, PageStatus, UserRole
 from app.models.ocr_word import OcrWord
 from app.models.page import Page
 from app.services.suspicious_detector_service import detect_chunks
@@ -67,11 +68,37 @@ def llm_correct_page(page_id: str | UUID, user_role: str) -> int:
 
         chain = build_chain(provider)
         inputs = [{"context": c.context, "original": c.original_text} for c in chunks]
-        logger.info("Invoking LLM chain on %s chunks (provider=%s)", len(inputs), provider.value)
-        results: list[CorrectionSuggestion] = chain.batch(inputs)
+        # Cap parallelism so we don't trip the provider's concurrency limit
+        # (Ollama Cloud's free tier returns 429 if every chunk fires at once).
+        max_concurrency = (
+            settings.OLLAMA_MAX_CONCURRENCY
+            if provider == LLMProvider.ollama
+            else settings.LLM_MAX_CONCURRENCY
+        )
+        logger.info(
+            "Invoking LLM chain on %s chunks (provider=%s, max_concurrency=%s)",
+            len(inputs),
+            provider.value,
+            max_concurrency,
+        )
+        # return_exceptions=True: a single malformed suggestion (small/local
+        # models sometimes emit invalid JSON, e.g. an unescaped backslash) must
+        # not fail the whole page — skip that chunk and keep the rest.
+        results: list[CorrectionSuggestion | Exception] = chain.batch(
+            inputs, config={"max_concurrency": max_concurrency}, return_exceptions=True
+        )
 
         inserted = 0
+        skipped = 0
         for chunk, suggestion in zip(chunks, results):
+            if isinstance(suggestion, Exception):
+                skipped += 1
+                logger.warning(
+                    "Skipping chunk %r — LLM output could not be parsed: %s",
+                    chunk.original_text,
+                    suggestion,
+                )
+                continue
             if suggestion.suggested.strip() == chunk.original_text.strip():
                 # LLM said it's already fine — skip storing.
                 continue
@@ -97,7 +124,12 @@ def llm_correct_page(page_id: str | UUID, user_role: str) -> int:
 
         page.status = PageStatus.llm_done
         db.commit()
-        logger.info("LLM correction done for page %s — %s suggestions", page_id, inserted)
+        logger.info(
+            "LLM correction done for page %s — %s suggestions (%s chunk(s) skipped)",
+            page_id,
+            inserted,
+            skipped,
+        )
         return inserted
 
     except Exception as exc:  # noqa: BLE001

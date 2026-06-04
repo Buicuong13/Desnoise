@@ -37,6 +37,7 @@ import { BeforeAfterCompare } from '@/components/editor/before-after-compare'
 import { cn } from '@/lib/utils'
 import { getWorkspaceColor, getWorkspaceIcon } from '@/lib/workspace-icons'
 import { useAuth } from '@/lib/auth-store'
+import { useUploadStore } from '@/lib/upload-store'
 import { api, ApiError } from '@/lib/api'
 import type {
   ApiCorrection,
@@ -150,6 +151,10 @@ export default function EditorPage() {
   const fetchedOcr = useRef<Set<string>>(new Set())
 
   const [busyAction, setBusyAction] = useState<'denoise' | 'ocr' | 'llm' | 'export' | null>(null)
+  // Which page the in-flight page-level action (denoise/ocr/llm) runs on, so the
+  // busy lock + spinners apply only to that page — not to every page you switch
+  // to while it runs. (export is document-level, so it leaves this null.)
+  const [busyPageId, setBusyPageId] = useState<string | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // Text-view page sections, so clicking a thumbnail scrolls to that page.
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -165,6 +170,18 @@ export default function EditorPage() {
     [pages, activePageId],
   )
   const pagesWithContent = useMemo(() => pages.filter(pageHasContent), [pages])
+
+  // Once a suggestion is *kept*, that word is fixed — drop it from the active
+  // page's low-confidence (yellow) highlight set so the editor stops marking it.
+  // Pending/undone corrections stay highlighted (still unresolved).
+  const activeLowConfWords = useMemo(() => {
+    const words = ocrByPage[activePageId]?.low_confidence_words ?? []
+    const keptSpans = corrections
+      .filter((c) => c.status === 'kept' && c.start_offset != null && c.end_offset != null)
+      .map((c) => [c.start_offset as number, c.end_offset as number] as const)
+    if (!keptSpans.length) return words
+    return words.filter((w) => !keptSpans.some(([s, e]) => w.start_offset < e && w.end_offset > s))
+  }, [ocrByPage, activePageId, corrections])
 
   const bumpRevision = useCallback((pageId: string) => {
     setRevisionByPage((prev) => ({ ...prev, [pageId]: (prev[pageId] ?? 0) + 1 }))
@@ -292,6 +309,26 @@ export default function EditorPage() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [activePageId, centerView])
 
+  // ── A direct upload runs in a store *outside* React, so it keeps going even
+  //    if the upload panel unmounts mid-flight (user switches view/thumbnail or
+  //    navigates). Pick the registered page up here so it shows up without a
+  //    manual reload. setPages is idempotent, so this never double-adds when the
+  //    panel's own onComplete also fires.
+  const uploadStep = useUploadStore((s) => s.step)
+  const uploadResultPage = useUploadStore((s) => s.resultPage)
+  const uploadDocumentId = useUploadStore((s) => s.documentId)
+  const mergedUploadId = useRef<string | null>(null)
+  useEffect(() => {
+    if (uploadStep !== 'complete' || !uploadResultPage || uploadDocumentId !== docId) return
+    if (mergedUploadId.current === uploadResultPage.id) return
+    mergedUploadId.current = uploadResultPage.id
+    setPages((prev) =>
+      prev.some((p) => p.id === uploadResultPage.id)
+        ? prev
+        : sortByPageNumber([...prev, uploadResultPage]),
+    )
+  }, [uploadStep, uploadResultPage, uploadDocumentId, docId])
+
   // ── Pipeline actions (operate on the active page) ────────────────────────────
   const runAndWait = useCallback(
     async (trigger: () => Promise<unknown>, until: PageStatus[]) => {
@@ -322,6 +359,7 @@ export default function EditorPage() {
   const handleDenoise = async (source: 'original' | 'current_denoised') => {
     if (!activePage) return
     setBusyAction('denoise')
+    setBusyPageId(activePage.id)
     try {
       await runAndWait(() => api.pages.denoise(activePage.id, { source }), ['denoised'])
       toast.success(source === 'current_denoised' ? 'Denoised again' : 'Denoised')
@@ -329,12 +367,14 @@ export default function EditorPage() {
       toast.error(e instanceof ApiError ? e.message : 'Failed to denoise')
     } finally {
       setBusyAction(null)
+      setBusyPageId(null)
     }
   }
 
   const handleRunOcr = async () => {
     if (!activePage) return
     setBusyAction('ocr')
+    setBusyPageId(activePage.id)
     try {
       const fresh = await runAndWait(() => api.ocr.trigger(activePage.id), ['ocr_done'])
       if (fresh?.status === 'ocr_done') {
@@ -349,12 +389,14 @@ export default function EditorPage() {
       toast.error(e instanceof ApiError ? e.message : 'Failed to run OCR')
     } finally {
       setBusyAction(null)
+      setBusyPageId(null)
     }
   }
 
   const handleRunLlm = async () => {
     if (!activePage) return
     setBusyAction('llm')
+    setBusyPageId(activePage.id)
     try {
       await runAndWait(() => api.corrections.trigger(activePage.id), ['llm_done'])
       const c = await api.corrections.list(activePage.id)
@@ -366,6 +408,7 @@ export default function EditorPage() {
       toast.error(e instanceof ApiError ? e.message : 'Failed to run LLM correction')
     } finally {
       setBusyAction(null)
+      setBusyPageId(null)
     }
   }
 
@@ -579,12 +622,20 @@ export default function EditorPage() {
   }
 
   const status = activePage?.status ?? null
-  const isBusy = (status ? ACTIVE_STATUSES.includes(status) : false) || busyAction !== null
+  // The page-level action only counts as "busy" on the page it's running on, so
+  // switching to another page doesn't show it locked/spinning. A page that is
+  // genuinely processing still locks via its own status (ACTIVE_STATUSES).
+  const pageAction = busyPageId && busyPageId === activePageId ? busyAction : null
+  const isBusy = (status ? ACTIVE_STATUSES.includes(status) : false) || pageAction !== null
   const hasDenoised = !!activePage?.denoised_url
   const canDenoise = !!status && !ACTIVE_STATUSES.includes(status)
   const canOcr = hasDenoised && !!status && !ACTIVE_STATUSES.includes(status)
   const hasContent = !!activePage && pageHasContent(activePage)
-  const canLlm = !!status && ['ocr_done', 'llm_done', 'reviewing', 'reviewed', 'exported'].includes(status)
+  // Allow (re)running AI correction whenever the page has OCR content and isn't
+  // mid-task — including after a `failed` LLM attempt, so the user can retry
+  // instead of being stuck. (`failed` is not a happy-path status, so gating on
+  // the status whitelist alone used to lock the button permanently.)
+  const canLlm = hasContent && !!status && !ACTIVE_STATUSES.includes(status)
   const pendingCount = corrections.filter((c) => c.status === 'pending').length
   const canExport = !isViewer && pagesWithContent.length > 0
 
@@ -880,7 +931,11 @@ export default function EditorPage() {
                         {hasOcr ? (
                           <CorrectionReviewEditor
                             value={p.tiptap_json}
-                            lowConfidenceWords={ocrByPage[p.id]?.low_confidence_words ?? []}
+                            lowConfidenceWords={
+                              p.id === activePageId
+                                ? activeLowConfWords
+                                : (ocrByPage[p.id]?.low_confidence_words ?? [])
+                            }
                             revision={revisionByPage[p.id] ?? 0}
                             editable
                             onSave={(tiptap) => handleSaveTiptap(p.id, tiptap)}
@@ -941,7 +996,7 @@ export default function EditorPage() {
                   <div className="flex flex-wrap gap-2">
                     {!hasDenoised ? (
                       <Button size="sm" onClick={() => handleDenoise('original')} disabled={!canDenoise || isBusy}>
-                        {busyAction === 'denoise' ? (
+                        {pageAction === 'denoise' ? (
                           <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Wand2 className="mr-1.5 h-3.5 w-3.5" />
@@ -956,7 +1011,7 @@ export default function EditorPage() {
                           </a>
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => handleDenoise('current_denoised')} disabled={isBusy}>
-                          {busyAction === 'denoise' ? (
+                          {pageAction === 'denoise' ? (
                             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                           ) : (
                             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
@@ -976,7 +1031,7 @@ export default function EditorPage() {
                   state={ocrState}
                 >
                   <Button size="sm" onClick={handleRunOcr} disabled={!canOcr || isBusy}>
-                    {busyAction === 'ocr' || status === 'ocr_running' ? (
+                    {pageAction === 'ocr' || status === 'ocr_running' ? (
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <ScanText className="mr-1.5 h-3.5 w-3.5" />
@@ -994,7 +1049,7 @@ export default function EditorPage() {
                 >
                   <div className="space-y-3">
                     <Button size="sm" variant="secondary" onClick={handleRunLlm} disabled={!canLlm || isBusy}>
-                      {busyAction === 'llm' || status === 'llm_running' ? (
+                      {pageAction === 'llm' || status === 'llm_running' ? (
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                       ) : (
                         <Sparkles className="mr-1.5 h-3.5 w-3.5" />

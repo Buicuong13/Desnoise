@@ -16,3 +16,7 @@ alembic upgrade head
 
 # 5. Chạy API
 uvicorn app.main:app --reload
+
+# 6. Chạy celery
+cd backend
+celery -A app.workers.celery_app worker -P threads -c 4 --loglevel=info

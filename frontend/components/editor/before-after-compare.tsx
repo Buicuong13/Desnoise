@@ -27,7 +27,7 @@ export function BeforeAfterCompare({ before, after }: Props) {
           src={before}
           alt="Original"
           draggable={false}
-          className="block w-full max-h-[480px] object-contain"
+          className="block w-full max-h-[85vh] object-contain"
         />
         {/* Top layer: denoised, clipped to the left `pos`%. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -11,6 +11,8 @@ python-jose[cryptography]==3.3.0
 passlib[argon2]==1.7.4
 argon2-cffi==23.1.0
 celery==5.4.0
+# On Windows, run the worker with Celery's built-in thread pool (no extra deps,
+# no C compiler): celery -A app.workers.celery_app worker -P threads -c 4
 redis==5.1.0
 cloudinary==1.41.0
 pillow==10.4.0
@@ -23,6 +25,12 @@ tensorflow==2.17.0
 torch==2.4.1
 torchvision==0.19.1
 pytesseract==0.3.13
+# DocLayout-YOLO document-layout detector (DocStructBench checkpoint). Pulls in
+# albumentations/scipy/etc. WARNING: those deps prefer numpy>=2, which is ABI-
+# incompatible with tensorflow 2.17 (breaks denoise). ALWAYS install via this
+# file (or pin `numpy==1.26.4` on the command line) so numpy stays on 1.26.4 —
+# never `pip install doclayout-yolo` on its own.
+doclayout-yolo==0.0.3
 langchain==0.3.3
 langchain-openai==0.2.2
 langchain-core==0.3.10

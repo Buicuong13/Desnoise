@@ -59,10 +59,12 @@ def _mean(values: list[float]) -> float:
 class TesseractLayoutEngine:
     """`OCRService` implementation backed by Tesseract TSV output."""
 
-    def extract_document_layout(self, image_bytes: bytes) -> OCRDocument:
+    def extract_document_layout(self, image_bytes: bytes, psm: int | None = None) -> OCRDocument:
         _configure_tesseract()
         language = settings.TESSERACT_LANG or "eng"
-        psm = settings.TESSERACT_PSM
+        # `psm` lets the layout engine OCR a single-line heading crop with psm 7;
+        # defaults to the configured page segmentation mode for whole-page use.
+        psm = settings.TESSERACT_PSM if psm is None else psm
         threshold = settings.SUSPICIOUS_CONFIDENCE_THRESHOLD / 100.0
 
         with Image.open(BytesIO(image_bytes)) as img:

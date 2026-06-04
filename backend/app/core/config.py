@@ -54,6 +54,22 @@ class Settings(BaseSettings):
     # Accept as a document when P(documents) >= threshold.
     CLASSIFIER_CONFIDENCE_THRESHOLD: float = 0.5
 
+    # Document layout detector (DocLayout-YOLO, DocStructBench checkpoint) — used
+    # by the layout-aware OCR pipeline to keep only textual regions (title /
+    # section-header / plain text) and OCR them in reading order.
+    LAYOUT_ENABLED: bool = True
+    LAYOUT_IMAGE_SIZE: int = 1024
+    # Empty -> app/checkpoints/layout/doclayout_yolo_docstructbench_imgsz1024.pt
+    # (falls back to the repo root if the .pt is still sitting there).
+    LAYOUT_WEIGHTS_PATH: str = ""
+    LAYOUT_CONF_THRESHOLD: float = 0.25
+    LAYOUT_DEVICE: str = "cpu"  # "cuda" if a GPU is available
+    # A box wider than this fraction of the page is treated as full-width
+    # (spans both columns) instead of being forced into a left/right column.
+    LAYOUT_FULLWIDTH_RATIO: float = 0.55
+    # Pixels of padding added around each crop before OCR (avoids clipping glyphs).
+    LAYOUT_CROP_PADDING: int = 4
+
     TESSERACT_CMD: str = "tesseract"
     TESSERACT_LANG: str = "vie+eng"
     # Page segmentation mode passed via `--psm`. 6 = assume a single uniform
@@ -76,6 +92,19 @@ class Settings(BaseSettings):
     OLLAMA_API_KEY: str = "ollama"
     # Which provider the free (viewer) tier uses: 'ollama' | 'openrouter_qwen' | 'openai'.
     VIEWER_LLM_PROVIDER: str = "ollama"
+
+    # Per-request timeout (seconds) and retry budget for every LLM call. Without
+    # these the OpenAI SDK default is 600s with 2 retries — a stalled Ollama
+    # request can freeze a solo-pool worker for minutes. Fail fast instead.
+    LLM_REQUEST_TIMEOUT: int = 60
+    LLM_MAX_RETRIES: int = 1
+
+    # Max chunks sent in parallel during chain.batch(). LangChain otherwise fires
+    # every suspicious chunk concurrently, which trips Ollama Cloud's free-tier
+    # concurrency cap (429 'too many concurrent requests'). Ollama gets a tighter
+    # cap than the paid OpenAI/OpenRouter providers.
+    LLM_MAX_CONCURRENCY: int = 4
+    OLLAMA_MAX_CONCURRENCY: int = 1
 
     SUSPICIOUS_CONFIDENCE_THRESHOLD: float = 70.0
 
