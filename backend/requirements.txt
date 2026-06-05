@@ -40,3 +40,5 @@ reportlab==4.2.5
 slowapi==0.1.9
 httpx==0.27.2
 python-dotenv==1.0.1
+# Stripe Checkout for the billing/subscription flow (see services/billing_service.py).
+stripe==11.1.0

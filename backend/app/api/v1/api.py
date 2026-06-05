@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin,
     auth,
+    billing,
     corrections,
     documents,
     exports,
@@ -24,3 +25,4 @@ api_router.include_router(restoration.router, prefix="", tags=["restoration"])
 api_router.include_router(corrections.router, prefix="/corrections", tags=["corrections"])
 api_router.include_router(exports.router, prefix="", tags=["exports"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(billing.router, prefix="/billing", tags=["billing"])

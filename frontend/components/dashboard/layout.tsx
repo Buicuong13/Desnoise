@@ -42,6 +42,7 @@ import {
   Users,
   Activity,
   Shield,
+  CreditCard,
 } from 'lucide-react'
 
 interface NavItem {
@@ -56,6 +57,7 @@ const userNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: FilePlus, label: 'New Document', href: '/dashboard/editor/new' },
   { icon: Library, label: 'My Documents', href: '/dashboard/history' },
+  { icon: CreditCard, label: 'Billing', href: '/dashboard/billing' },
   { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
 ]
 

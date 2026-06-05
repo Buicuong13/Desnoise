@@ -21,6 +21,11 @@ class DocumentStatus(str, enum.Enum):
 
 
 class PageStatus(str, enum.Enum):
+    # Classify runs in the background (classify_queue) right after upload; the
+    # page sits at `classifying` until the document/non-document gate resolves,
+    # then moves to `uploaded` (accepted) or `rejected` (not a document).
+    classifying = "classifying"
+    rejected = "rejected"
     uploaded = "uploaded"
     denoising = "denoising"
     denoised = "denoised"

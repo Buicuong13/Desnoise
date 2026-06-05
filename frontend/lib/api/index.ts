@@ -7,6 +7,7 @@
  *   await api.ocr.trigger(pageId)
  */
 import * as auth from './auth'
+import * as billing from './billing'
 import * as corrections from './corrections'
 import * as documents from './documents'
 import * as exportsApi from './exports'
@@ -26,8 +27,8 @@ export const api = {
   uploads: {
     sign: uploads.getSignature,
     toCloudinary: uploads.uploadToCloudinary,
-    validate: uploads.validateUpload,
     register: uploads.registerUpload,
+    replace: uploads.replaceUpload,
   },
   pages: {
     denoise: pages.denoisePage,
@@ -53,6 +54,12 @@ export const api = {
   exports: {
     docx: exportsApi.exportDocx,
     pdf: exportsApi.exportPdf,
+  },
+  billing: {
+    plans: billing.listPlans,
+    me: billing.getMySubscription,
+    payments: billing.listPayments,
+    checkout: billing.createCheckout,
   },
 }
 

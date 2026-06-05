@@ -25,6 +25,17 @@ class CorrectionOut(BaseModel):
     created_at: datetime
 
 
+class TriggerCorrectionIn(BaseModel):
+    """Optional body for triggering LLM correction.
+
+    `provider` lets a paid user pick the model (openai → gpt-4o-mini, or ollama).
+    Ignored for viewers (forced onto the free tier). Defaults to the role's
+    default provider when omitted.
+    """
+
+    provider: LLMProvider | None = None
+
+
 class BulkReviewIn(BaseModel):
     accept_ids: list[UUID] = []
     reject_ids: list[UUID] = []

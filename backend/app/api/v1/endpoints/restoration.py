@@ -3,12 +3,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_llm_provider_for_user
+from app.ai.llm.provider import resolve_llm_provider
+from app.api.deps import CurrentUser
 from app.core.exceptions import NotFound, ValidationError
 from app.database.session import get_db
 from app.models.document import Document
-from app.models.enums import LLMProvider, PageStatus
+from app.models.enums import PageStatus
 from app.models.page import Page
+from app.schemas.correction import TriggerCorrectionIn
 from app.workers.llm_correction_task import llm_correct_page_task
 
 router = APIRouter()
@@ -29,16 +31,22 @@ def trigger_llm_correction(
     page_id: UUID,
     user: CurrentUser,
     db: Session = Depends(get_db),
-    provider: LLMProvider = Depends(get_llm_provider_for_user),
+    payload: TriggerCorrectionIn = TriggerCorrectionIn(),
 ) -> dict[str, str]:
-    """User TRIGGERS LLM correction after reviewing OCR. Provider chosen by role."""
+    """User TRIGGERS LLM correction after reviewing OCR.
+
+    A paid user may pick the model (`provider`: openai → gpt-4o-mini, or ollama);
+    viewers are always forced onto the free tier. The backend resolves the
+    effective provider so the client can never escalate to a paid model.
+    """
     page = _get_owned_page(page_id, user, db)
     if page.status not in (PageStatus.ocr_done, PageStatus.llm_done, PageStatus.llm_running, PageStatus.failed):
         raise ValidationError(
             f"OCR must complete before LLM correction (current status: {page.status.value})"
         )
 
-    llm_correct_page_task.delay(str(page.id), user.role.value)
+    provider = resolve_llm_provider(user.role, payload.provider)
+    llm_correct_page_task.delay(str(page.id), user.role.value, provider.value)
     return {
         "status": "enqueued",
         "page_id": str(page.id),

@@ -26,10 +26,18 @@ from app.services.tiptap_service import apply_corrections
 logger = get_logger(__name__)
 
 
-def llm_correct_page(page_id: str | UUID, user_role: str) -> int:
-    """Run LLM correction for `page_id`. Returns the number of suggestions inserted."""
+def llm_correct_page(
+    page_id: str | UUID, user_role: str, provider: str | None = None
+) -> int:
+    """Run LLM correction for `page_id`. Returns the number of suggestions inserted.
+
+    `provider` is the effective provider already resolved at the API layer (the
+    paid user's model choice). When omitted, fall back to the role's default so
+    the function stays usable on its own.
+    """
     role = UserRole(user_role)
-    provider = resolve_llm_provider(role)
+    requested = LLMProvider(provider) if provider else None
+    provider = resolve_llm_provider(role, requested)
     model_name = get_model_name(provider)
 
     db = SessionLocal()
@@ -163,6 +171,11 @@ def recompute_review(db, page: Page) -> None:
     Backend-authoritative Keep/Undo (spec §9.2): every accept/reject re-derives
     the document so the frontend just refetches `tiptap_json`.
     """
+    # The session uses autoflush=False, so the just-changed correction status
+    # (set by the caller) isn't visible to the kept-corrections SELECT below
+    # until we flush. Without this, the suggestion you just kept is missed and
+    # the recomputed text drops that fix (one-keep-behind bug).
+    db.flush()
     plain = page.ocr_plain_text or ""
     kept = _kept_corrections(db, page.id)
     corrs = [(c.start_offset, c.end_offset, c.suggested_text) for c in kept]

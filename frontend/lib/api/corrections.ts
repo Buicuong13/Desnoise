@@ -2,12 +2,17 @@
  * LLM correction endpoints — trigger, list, review (Keep/Undo), reconstruct final text.
  */
 import { apiRequest } from './client'
-import type { ApiCorrection, ApiFinalText, CorrectionStatus } from './types'
+import type { ApiCorrection, ApiFinalText, CorrectionStatus, LLMProvider } from './types'
 
 export function triggerLlmCorrection(
   pageId: string,
+  /** Paid users may pick the model; viewers' choice is ignored by the backend. */
+  provider?: LLMProvider,
 ): Promise<{ status: string; page_id: string; provider: string }> {
-  return apiRequest(`/api/v1/pages/${pageId}/llm-correction`, { method: 'POST' })
+  return apiRequest(`/api/v1/pages/${pageId}/llm-correction`, {
+    method: 'POST',
+    body: provider ? { provider } : {},
+  })
 }
 
 export function listCorrections(

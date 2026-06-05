@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base, UUIDPKMixin
 from app.models.enums import SubscriptionStatus
@@ -48,3 +48,6 @@ class UserSubscription(UUIDPKMixin, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    # Eager-loaded so SubscriptionOut can serialize the nested plan in one query.
+    plan: Mapped["SubscriptionPlan"] = relationship("SubscriptionPlan", lazy="joined")

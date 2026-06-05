@@ -17,8 +17,6 @@ export type UploadStep =
   | 'idle'
   | 'signing'
   | 'uploading'
-  | 'validating'
-  | 'rejected'
   | 'registering'
   | 'complete'
   | 'error'
@@ -27,18 +25,11 @@ export type WorkspaceChoice =
   | { kind: 'existing'; id: string }
   | { kind: 'new'; title: string }
 
-export interface UploadRejection {
-  /** 0..1 confidence that the image is NOT a document. */
-  confidence: number
-  probDocuments: number
-}
-
 interface UploadState {
   step: UploadStep
   progress: number
   statusMessage: string
   error: string | null
-  rejection: UploadRejection | null
   resultPage: ApiPage | null
   documentId: string | null
   previewDataUrl: string | null
@@ -50,6 +41,9 @@ interface UploadActions {
     workspace: WorkspaceChoice,
     file: File,
     previewDataUrl: string,
+    /** When set, replace this (rejected) page in place instead of registering
+     *  a new one — keeps the same page slot / id. */
+    replacePageId?: string,
   ) => Promise<void>
   reset: () => void
 }
@@ -59,7 +53,6 @@ const initial: UploadState = {
   progress: 0,
   statusMessage: '',
   error: null,
-  rejection: null,
   resultPage: null,
   documentId: null,
   previewDataUrl: null,
@@ -71,7 +64,7 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
 
   reset: () => set(initial),
 
-  startUpload: async (workspace, file, previewDataUrl) => {
+  startUpload: async (workspace, file, previewDataUrl, replacePageId) => {
     set({
       ...initial,
       step: 'signing',
@@ -112,30 +105,13 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
         (pct) => set({ progress: 20 + Math.round(pct * 0.6) }),
       )
 
-      // 4. Validate the image is a document page (MobileNetV3 gate). If it is
-      //    not a document we STOP here — never register, never spend quota.
-      set({ step: 'validating', progress: 85, statusMessage: 'Checking the image is a document…' })
-      const verdict = await api.uploads.validate({
-        workspace_id: documentId,
-        image_url: result.secure_url,
-        cloudinary_public_id: result.public_id,
-      })
-      if (!verdict.is_document) {
-        set({
-          step: 'rejected',
-          progress: 100,
-          statusMessage: 'Not a document',
-          rejection: {
-            confidence: verdict.confidence,
-            probDocuments: verdict.prob_documents,
-          },
-        })
-        return
-      }
-
-      // 5. Register the page metadata with the backend.
-      set({ step: 'registering', progress: 92, statusMessage: 'Saving page…' })
-      const page = await api.uploads.register(documentId, {
+      // 4. Register the page metadata (or replace a rejected page in place).
+      //    The document/non-document gate now runs asynchronously on the backend
+      //    (classify_queue): the page comes back as `classifying` and the editor
+      //    polls until it resolves to `uploaded` (accepted) or `rejected` (not a
+      //    document — quota refunded).
+      set({ step: 'registering', progress: 90, statusMessage: 'Saving page…' })
+      const meta = {
         original_image_url: result.secure_url,
         cloudinary_public_id: result.public_id,
         filename: file.name,
@@ -143,9 +119,10 @@ export const useUploadStore = create<UploadState & UploadActions>((set) => ({
         width: result.width,
         height: result.height,
         format: result.format,
-        doc_class: verdict.label,
-        doc_class_confidence: verdict.confidence,
-      })
+      }
+      const page = replacePageId
+        ? await api.uploads.replace(replacePageId, meta)
+        : await api.uploads.register(documentId, meta)
 
       set({
         step: 'complete',

@@ -22,12 +22,10 @@ from app.schemas.upload import (
     RegisterUploadIn,
     SignatureIn,
     SignatureOut,
-    ValidateUploadIn,
-    ValidateUploadOut,
 )
-from app.services.classification_service import classify_upload
 from app.storage import get_storage
 from app.storage.cloudinary_backend import CloudinaryStorage
+from app.workers.classify_task import classify_page_task
 
 router = APIRouter()
 
@@ -81,22 +79,6 @@ def create_upload_signature(
     )
 
 
-@router.post("/uploads/validate", response_model=ValidateUploadOut)
-def validate_upload(
-    payload: ValidateUploadIn, user: CurrentUser, db: Session = Depends(get_db)
-) -> ValidateUploadOut:
-    """Classify a freshly-uploaded image as document / non-document.
-
-    Called between the direct Cloudinary upload and `register-upload`. If the
-    image is not a document, the frontend asks the user to re-upload and never
-    registers a page (no quota spent). Fail-open: a model problem returns
-    is_document=True so the pipeline is never hard-blocked.
-    """
-    _get_owned_document(payload.workspace_id, user, db)
-    result = classify_upload(payload.cloudinary_public_id or payload.image_url)
-    return ValidateUploadOut(**result)
-
-
 @router.post(
     "/documents/{doc_id}/pages/register-upload",
     status_code=status.HTTP_201_CREATED,
@@ -108,7 +90,14 @@ def register_upload(
     user: CurrentUser,
     db: Session = Depends(get_db),
 ) -> Page:
-    """Persist page metadata after a successful direct upload. No auto-denoise."""
+    """Persist page metadata after a successful direct upload, then kick off the
+    async document/non-document gate.
+
+    The page is created at `classifying` and a classify task is enqueued onto
+    the classify_queue worker; the frontend polls until it becomes `uploaded`
+    (accepted) or `rejected` (not a document — quota is refunded by the worker).
+    No auto-denoise — that stays a separate, user-triggered step.
+    """
     doc = _get_owned_document(doc_id, user, db)
 
     if user.role == UserRole.viewer and (user.images_used or 0) >= settings.VIEWER_MAX_IMAGES:
@@ -129,13 +118,72 @@ def register_upload(
         file_size_kb=round(payload.file_size / 1024) if payload.file_size else None,
         width=payload.width,
         height=payload.height,
-        status=PageStatus.uploaded,
-        doc_class=payload.doc_class,
-        doc_class_confidence=payload.doc_class_confidence,
+        status=PageStatus.classifying,
     )
     db.add(page)
     doc.total_pages = (doc.total_pages or 0) + 1
     user.images_used = (user.images_used or 0) + 1
     db.commit()
     db.refresh(page)
+
+    # Run the classifier in the background (classify_queue) so the model never
+    # runs in the API process. A rejected page refunds the quota spent above.
+    classify_page_task.delay(str(page.id))
+    return page
+
+
+@router.post(
+    "/pages/{page_id}/replace-upload",
+    response_model=PageOut,
+)
+def replace_upload(
+    page_id: UUID,
+    payload: RegisterUploadIn,
+    user: CurrentUser,
+    db: Session = Depends(get_db),
+) -> Page:
+    """Swap the image of a *rejected* page in place and re-run the classifier.
+
+    A page the classifier rejected (not a document) keeps its row + page_number;
+    re-uploading reuses that same slot instead of creating a new page (which
+    would leave the rejected page lingering and bump every later page number).
+    The new image is classified again, so quota is re-charged here (and refunded
+    again by the worker if it's rejected once more).
+    """
+    page = db.get(Page, page_id)
+    if page is None:
+        raise NotFound("Page not found")
+    doc = _get_owned_document(page.document_id, user, db)
+
+    if page.status != PageStatus.rejected:
+        raise ValidationError("Only a rejected page can be replaced.")
+
+    if user.role == UserRole.viewer and (user.images_used or 0) >= settings.VIEWER_MAX_IMAGES:
+        raise QuotaExceeded(f"Viewer image limit reached ({settings.VIEWER_MAX_IMAGES} images)")
+
+    # Best-effort: drop the rejected image from Cloudinary so it doesn't linger.
+    old_public_id = page.cloudinary_public_id
+    if old_public_id:
+        try:
+            get_storage().delete(old_public_id)
+        except Exception:  # noqa: BLE001 - never block replace on a cleanup error
+            pass
+
+    page.cloudinary_public_id = payload.cloudinary_public_id
+    page.original_url = payload.original_image_url
+    page.file_size_kb = round(payload.file_size / 1024) if payload.file_size else None
+    page.width = payload.width
+    page.height = payload.height
+    page.status = PageStatus.classifying
+    page.processing_error = None
+    page.doc_class = None
+    page.doc_class_confidence = None
+
+    # Re-charge the quota that the worker refunded when it rejected this page.
+    doc.total_pages = (doc.total_pages or 0) + 1
+    user.images_used = (user.images_used or 0) + 1
+    db.commit()
+    db.refresh(page)
+
+    classify_page_task.delay(str(page.id))
     return page

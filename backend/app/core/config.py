@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     MOMO_SECRET_KEY: str = ""
     STRIPE_API_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+    # Where Stripe Checkout sends the user back after pay/cancel. The billing
+    # page reads ?status=success|canceled off this URL.
+    FRONTEND_URL: str = "http://localhost:3000"
 
 
 @lru_cache

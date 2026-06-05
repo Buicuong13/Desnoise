@@ -7,6 +7,8 @@ export type UserRole = 'admin' | 'user' | 'viewer'
 export type UserStatus = 'active' | 'banned' | 'pending'
 
 export type PageStatus =
+  | 'classifying'
+  | 'rejected'
   | 'uploaded'
   | 'denoising'
   | 'denoised'
@@ -109,18 +111,53 @@ export interface CloudinaryUploadResult {
   format: string
 }
 
-/** Returned by POST /uploads/validate — document vs non-document gate. */
-export interface ValidateUploadResult {
-  is_document: boolean
-  label: 'document' | 'non_document' | 'unknown'
-  confidence: number
-  prob_documents: number
-  prob_non_documents: number
-  threshold: number
+// ── Billing / subscription ──────────────────────────────────────────────────
+export interface PlanFeatures {
+  tier?: 'free' | 'pro' | 'enterprise'
+  purchasable?: boolean
+  period?: 'monthly' | 'yearly'
+  discount?: number
+  contact?: boolean
+  highlights?: string[]
+}
+
+export interface ApiPlan {
+  id: number
+  code: string
+  name: string
+  price_vnd: number
+  duration_days: number
+  features: PlanFeatures | null
+  is_active: boolean
+}
+
+export type SubscriptionStatus = 'active' | 'expired' | 'cancelled'
+export type PaymentGateway = 'vnpay' | 'momo' | 'stripe'
+export type PaymentStatus = 'pending' | 'success' | 'failed' | 'refunded'
+
+export interface ApiSubscription {
+  id: string
+  status: SubscriptionStatus
+  starts_at: string
+  ends_at: string
+  plan: ApiPlan
+}
+
+export interface ApiPayment {
+  id: string
+  gateway: PaymentGateway
+  gateway_txn_id: string
+  amount_vnd: number
+  status: PaymentStatus
+  created_at: string
+  paid_at: string | null
+  plan_name: string | null
 }
 
 export type CorrectionStatus = 'pending' | 'kept' | 'undone'
-export type LLMProvider = 'openai' | 'openrouter_qwen'
+/** Paid users pick between `openai` (gpt-4o-mini) and `ollama`; viewers are
+ *  forced to the free tier. `openrouter_qwen` is an alternate free-tier option. */
+export type LLMProvider = 'openai' | 'ollama' | 'openrouter_qwen'
 
 export interface ApiOcrWord {
   id: number

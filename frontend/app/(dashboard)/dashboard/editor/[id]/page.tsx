@@ -17,6 +17,7 @@ import {
   Plus,
   CheckCircle2,
   ImageIcon,
+  ImageOff,
   Type,
   UploadCloud,
   ShieldCheck,
@@ -39,16 +40,18 @@ import { getWorkspaceColor, getWorkspaceIcon } from '@/lib/workspace-icons'
 import { useAuth } from '@/lib/auth-store'
 import { useUploadStore } from '@/lib/upload-store'
 import { api, ApiError } from '@/lib/api'
+import { downloadImage } from '@/lib/download'
 import type {
   ApiCorrection,
   ApiDocument,
   ApiOcrDocument,
   ApiPage,
+  LLMProvider,
   PageStatus,
   TiptapDoc,
 } from '@/lib/api/types'
 
-const ACTIVE_STATUSES: PageStatus[] = ['denoising', 'ocr_running', 'llm_running']
+const ACTIVE_STATUSES: PageStatus[] = ['classifying', 'denoising', 'ocr_running', 'llm_running']
 const HAS_OCR: PageStatus[] = ['ocr_done', 'llm_running', 'llm_done', 'reviewing', 'reviewed', 'exported']
 const VIEWER_IMAGE_LIMIT = 10
 const VIEWER_WORKSPACE_LIMIT = 2
@@ -140,8 +143,14 @@ export default function EditorPage() {
   const [centerView, setCenterView] = useState<'image' | 'text'>('image')
   // Toggle the "add page" uploader inside the canvas.
   const [showUpload, setShowUpload] = useState(false)
+  // Toggle the in-place re-upload panel for a rejected page (replaces the same
+  // page slot instead of adding a new page).
+  const [replacingRejected, setReplacingRejected] = useState(false)
   // AI correction review modal (roomy diff view instead of the cramped pane).
   const [reviewOpen, setReviewOpen] = useState(false)
+  // Which model a paid user runs AI correction with (gpt-4o-mini or Ollama).
+  // Viewers are always forced onto Ollama by the backend.
+  const [llmProvider, setLlmProvider] = useState<LLMProvider>('openai')
 
   // OCR layout + LLM suggestions. OCR is kept per-page (every section needs its
   // own low-confidence words); corrections only for the active page.
@@ -156,6 +165,9 @@ export default function EditorPage() {
   // to while it runs. (export is document-level, so it leaves this null.)
   const [busyPageId, setBusyPageId] = useState<string | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Downloading the denoised image to the user's machine (independent of the
+  // page-level pipeline actions, so it never locks Denoise/OCR/LLM).
+  const [isDownloading, setIsDownloading] = useState(false)
   // Text-view page sections, so clicking a thumbnail scrolls to that page.
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
@@ -186,6 +198,11 @@ export default function EditorPage() {
   const bumpRevision = useCallback((pageId: string) => {
     setRevisionByPage((prev) => ({ ...prev, [pageId]: (prev[pageId] ?? 0) + 1 }))
   }, [])
+
+  // Close the in-place re-upload panel when the user switches pages.
+  useEffect(() => {
+    setReplacingRejected(false)
+  }, [activePageId])
 
   // ── Initial load: document + pages list
   useEffect(() => {
@@ -264,8 +281,10 @@ export default function EditorPage() {
 
   // ── Load LLM suggestions for the active page when it has them.
   useEffect(() => {
+    // Drop the previous page's suggestions immediately so the panel never shows
+    // another page's corrections during the fetch (or for a page with none).
+    setCorrections([])
     if (!activePage || !['llm_done', 'reviewing', 'reviewed', 'exported'].includes(activePage.status)) {
-      setCorrections([])
       return
     }
     let cancelled = false
@@ -287,6 +306,17 @@ export default function EditorPage() {
       return null
     }
   }, [])
+
+  // ── A page rejected by the async classifier had its image quota refunded by
+  //    the worker — refresh the user so the images_used chip reflects it. Once
+  //    per rejected page id.
+  const refundedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (activePage?.status === 'rejected' && !refundedRef.current.has(activePage.id)) {
+      refundedRef.current.add(activePage.id)
+      refreshUser()
+    }
+  }, [activePage?.status, activePage?.id, refreshUser])
 
   // ── Poll the active page while a long-running task is in flight
   useEffect(() => {
@@ -371,6 +401,23 @@ export default function EditorPage() {
     }
   }
 
+  const handleDownloadDenoised = async () => {
+    if (!activePage?.denoised_url) return
+    setIsDownloading(true)
+    try {
+      await downloadImage({
+        url: activePage.denoised_url,
+        pageId: activePage.id,
+        type: 'denoised',
+        filename: `${doc?.title ?? 'page'}-p${activePage.page_number}-denoised.png`,
+      })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Download failed')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   const handleRunOcr = async () => {
     if (!activePage) return
     setBusyAction('ocr')
@@ -398,7 +445,12 @@ export default function EditorPage() {
     setBusyAction('llm')
     setBusyPageId(activePage.id)
     try {
-      await runAndWait(() => api.corrections.trigger(activePage.id), ['llm_done'])
+      // Viewers are forced onto the free tier server-side, so only send a choice
+      // for paid users.
+      await runAndWait(
+        () => api.corrections.trigger(activePage.id, isViewer ? undefined : llmProvider),
+        ['llm_done'],
+      )
       const c = await api.corrections.list(activePage.id)
       setCorrections(c)
       bumpRevision(activePage.id)
@@ -471,6 +523,10 @@ export default function EditorPage() {
       setPages((prev) => sortByPageNumber([...prev.filter((p) => p.id !== page.id), page]))
       setActivePageId(page.id)
       setShowUpload(false)
+      setReplacingRejected(false)
+      // Replacing reuses the page id — allow a fresh quota-refund refresh if this
+      // re-uploaded page gets rejected again.
+      refundedRef.current.delete(page.id)
       setCenterView('image')
       refreshUser() // upload consumed quota — refresh images_used so the chip updates now
     },
@@ -809,7 +865,8 @@ export default function EditorPage() {
           </div>
 
           <div className="flex-1 p-4 lg:p-6">
-            {activePage?.processing_error && (
+            {/* `rejected` has its own dedicated block below — don't double up. */}
+            {activePage?.processing_error && status !== 'rejected' && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Processing error</AlertTitle>
@@ -847,11 +904,67 @@ export default function EditorPage() {
                   <UploadCloud className="mr-2 h-4 w-4" /> Upload the first page
                 </Button>
               </div>
+            ) : status === 'rejected' ? (
+              /* Async classifier rejected this page (not a document). The quota
+                 spent at upload has already been refunded by the worker. */
+              <div className="mx-auto max-w-xl">
+                <Card>
+                  <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10">
+                      <ImageOff className="h-7 w-7 text-destructive" />
+                    </div>
+                    <div>
+                      <p className="font-display text-base font-semibold text-foreground">
+                        Đây không giống một trang tài liệu
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {activePage.processing_error ||
+                          'Ảnh này không phải tài liệu nên không được xử lý.'}{' '}
+                        Hạn mức ảnh đã được hoàn lại — hãy tải lên ảnh chụp/scan một trang tài liệu rõ nét.
+                      </p>
+                    </div>
+                    {replacingRejected ? (
+                      /* Re-upload replaces this same page (P.{page_number}) in
+                         place — it does NOT create a new page. */
+                      <div className="w-full text-left">
+                        <p className="mb-2 text-center font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Thay ảnh cho trang {activePage.page_number}
+                        </p>
+                        <PageUploadPanel
+                          mode={{ kind: 'replace', id: docId, pageId: activePage.id }}
+                          disabled={isViewerAtLimit}
+                          disabledReason="You've used all 10 free images. Upgrade to keep uploading."
+                          onComplete={handlePageRegistered}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2 w-full"
+                          onClick={() => setReplacingRejected(false)}
+                        >
+                          Huỷ
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button onClick={() => setReplacingRejected(true)}>
+                        <UploadCloud className="mr-2 h-4 w-4" /> Tải ảnh khác cho trang này
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             ) : centerView === 'image' ? (
               <div className="mx-auto max-w-3xl space-y-4">
                 {/* Active page image / before-after */}
                 <div className="overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm">
-                  {status === 'denoising' ? (
+                  {status === 'classifying' ? (
+                    <div className="flex min-h-[320px] items-center justify-center">
+                      <ProcessingIndicator
+                        label="Đang kiểm tra ảnh…"
+                        hint="Xác minh ảnh có phải một trang tài liệu (chạy nền)."
+                      />
+                    </div>
+                  ) : status === 'denoising' ? (
                     <div className="flex min-h-[320px] items-center justify-center">
                       <ProcessingIndicator label="Denoising…" hint="Running the U-Net model." />
                     </div>
@@ -904,6 +1017,13 @@ export default function EditorPage() {
                         key={p.id}
                         ref={(el) => {
                           sectionRefs.current[p.id] = el
+                        }}
+                        // Clicking anywhere in a page's section (incl. its text
+                        // editor) makes it the active page, so the right-hand
+                        // pipeline + AI-correction panel follow the page you're
+                        // actually working on.
+                        onMouseDown={() => {
+                          if (p.id !== activePageId) setActivePageId(p.id)
                         }}
                         className={cn(
                           'scroll-mt-16 rounded-xl border bg-card p-4 transition-colors',
@@ -1005,10 +1125,18 @@ export default function EditorPage() {
                       </Button>
                     ) : (
                       <>
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={activePage.denoised_url!} target="_blank" rel="noopener noreferrer">
-                            <Download className="mr-1.5 h-3.5 w-3.5" /> Download
-                          </a>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleDownloadDenoised}
+                          disabled={isDownloading}
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Download
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => handleDenoise('current_denoised')} disabled={isBusy}>
                           {pageAction === 'denoise' ? (
@@ -1048,6 +1176,42 @@ export default function EditorPage() {
                   state={llmState}
                 >
                   <div className="space-y-3">
+                    {/* Paid users pick the model; viewers are locked to the free
+                        local model (Ollama) server-side. */}
+                    {!isViewer && (
+                      <div>
+                        <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          Model
+                        </p>
+                        <div className="inline-flex w-full rounded-lg border border-border bg-card p-0.5 text-xs font-semibold">
+                          {([
+                            ['openai', 'GPT-4o mini'],
+                            ['ollama', 'Ollama'],
+                          ] as const).map(([value, label]) => (
+                            <button
+                              key={value}
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => setLlmProvider(value)}
+                              className={cn(
+                                'flex-1 rounded-md px-2 py-1 transition-colors disabled:opacity-50',
+                                llmProvider === value
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-muted-foreground hover:text-foreground',
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {llmProvider === 'openai'
+                            ? 'OpenAI gpt-4o-mini (cloud).'
+                            : 'Local/cloud Ollama model.'}
+                        </p>
+                      </div>
+                    )}
+
                     <Button size="sm" variant="secondary" onClick={handleRunLlm} disabled={!canLlm || isBusy}>
                       {pageAction === 'llm' || status === 'llm_running' ? (
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -1134,7 +1298,9 @@ export default function EditorPage() {
         corrections={corrections}
         onReview={reviewSuggestion}
         onKeepAll={handleKeepAll}
-        providerLabel={isViewer ? 'Ollama (free)' : 'ChatGPT (GPT-4o)'}
+        providerLabel={
+          isViewer ? 'Ollama (free)' : llmProvider === 'ollama' ? 'Ollama' : 'GPT-4o mini'
+        }
         busy={busyAction !== null}
       />
     </div>
