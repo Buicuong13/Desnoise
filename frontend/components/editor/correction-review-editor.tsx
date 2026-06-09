@@ -9,7 +9,7 @@
  * LLM Keep/Undo is backend-authoritative: the parent bumps `revision` after a
  * review action so this editor reloads the recomputed document.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { EditorContent, Extension, useEditor } from '@tiptap/react'
@@ -71,16 +71,20 @@ interface Props {
   /** Bump to force a reload of `value` (e.g. after Keep/Undo recompute). */
   revision?: number
   editable?: boolean
-  onSave?: (doc: TiptapDoc) => Promise<void>
+  /** Page this editor edits — passed back to `onSave` so the parent callback can
+   *  stay stable (memoized) instead of a per-page inline closure. */
+  pageId?: string
+  onSave?: (pageId: string, doc: TiptapDoc) => Promise<void>
 }
 
 const EMPTY_DOC: TiptapDoc = { type: 'doc', content: [{ type: 'paragraph' }] }
 
-export function CorrectionReviewEditor({
+function CorrectionReviewEditorImpl({
   value,
   lowConfidenceWords = [],
   revision = 0,
   editable = true,
+  pageId,
   onSave,
 }: Props) {
   const wordsRef = useRef<ApiLowConfidenceWord[]>(lowConfidenceWords)
@@ -128,15 +132,15 @@ export function CorrectionReviewEditor({
   }, [revision, editor])
 
   const handleSave = useCallback(async () => {
-    if (!editor || !onSave) return
+    if (!editor || !onSave || !pageId) return
     setSaving(true)
     try {
-      await onSave(editor.getJSON() as TiptapDoc)
+      await onSave(pageId, editor.getJSON() as TiptapDoc)
       setDirty(false)
     } finally {
       setSaving(false)
     }
-  }, [editor, onSave])
+  }, [editor, onSave, pageId])
 
   return (
     <div className="space-y-2">
@@ -158,3 +162,7 @@ export function CorrectionReviewEditor({
     </div>
   )
 }
+
+/** Memoized: the editor page polls/re-renders frequently, but a page's editor
+ *  only needs to re-render when its own props change. */
+export const CorrectionReviewEditor = memo(CorrectionReviewEditorImpl)

@@ -21,6 +21,7 @@ import {
   Type,
   UploadCloud,
   ShieldCheck,
+  ExternalLink,
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +37,7 @@ import { ProcessingIndicator } from '@/components/editor/processing-indicator'
 import { PageUploadPanel } from '@/components/editor/page-upload-panel'
 import { BeforeAfterCompare } from '@/components/editor/before-after-compare'
 import { cn } from '@/lib/utils'
+import { cloudinaryUrl, TX_THUMB, TX_CANVAS } from '@/lib/cloudinary'
 import { getWorkspaceColor, getWorkspaceIcon } from '@/lib/workspace-icons'
 import { useAuth } from '@/lib/auth-store'
 import { useUploadStore } from '@/lib/upload-store'
@@ -70,6 +72,44 @@ type StepState = 'locked' | 'active' | 'done'
 
 const sortByPageNumber = (ps: ApiPage[]) => [...ps].sort((a, b) => a.page_number - b.page_number)
 const pageHasContent = (p: ApiPage) => HAS_OCR.includes(p.status) || !!p.tiptap_json
+
+/** Lightweight read-only render of a page's restored text. Used for non-active
+ *  pages in the text view so we only ever mount ONE heavy Tiptap editor (the
+ *  active page) instead of one per page — clicking a page makes it active and
+ *  swaps in the full editor. */
+function StaticPageText({ doc }: { doc: TiptapDoc | null }) {
+  const paragraphs = doc?.content ?? []
+  return (
+    <div className="tiptap-editor max-h-[560px] overflow-auto rounded-xl border border-border bg-white p-4">
+      {paragraphs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">(empty)</p>
+      ) : (
+        paragraphs.map((node, i) => {
+          const text = (node.content ?? []).map((c) => c.text ?? '').join('')
+          return <p key={i}>{text || ' '}</p>
+        })
+      )}
+    </div>
+  )
+}
+
+/** Opens the raw (untransformed, full-resolution) image in a new tab. The canvas
+ *  renders a downscaled copy for speed; this is the escape hatch for inspecting
+ *  the page at native size. */
+function ViewOriginalLink({ url, label }: { url: string | null; label: string }) {
+  if (!url) return null
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-primary"
+    >
+      <ExternalLink className="h-3 w-3" />
+      {label}
+    </a>
+  )
+}
 
 /** Vertical pipeline step card (right inspector) — the design system's signature component. */
 function PipelineStep({
@@ -159,7 +199,10 @@ export default function EditorPage() {
   const [revisionByPage, setRevisionByPage] = useState<Record<string, number>>({})
   const fetchedOcr = useRef<Set<string>>(new Set())
 
-  const [busyAction, setBusyAction] = useState<'denoise' | 'ocr' | 'llm' | 'export' | null>(null)
+  const [busyAction, setBusyAction] = useState<'denoise' | 'ocr' | 'llm' | null>(null)
+  // Export is document-level and tracked per-format, so clicking Word only spins
+  // the Word button (not PDF), and vice-versa.
+  const [exportingFmt, setExportingFmt] = useState<'docx' | 'pdf' | null>(null)
   // Which page the in-flight page-level action (denoise/ocr/llm) runs on, so the
   // busy lock + spinners apply only to that page — not to every page you switch
   // to while it runs. (export is document-level, so it leaves this null.)
@@ -504,7 +547,7 @@ export default function EditorPage() {
   }, [])
 
   const handleExport = async (fmt: 'docx' | 'pdf') => {
-    setBusyAction('export')
+    setExportingFmt(fmt)
     try {
       const res = fmt === 'docx' ? await api.exports.docx(docId) : await api.exports.pdf(docId)
       if (res.file_url) {
@@ -514,7 +557,7 @@ export default function EditorPage() {
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Export failed')
     } finally {
-      setBusyAction(null)
+      setExportingFmt(null)
     }
   }
 
@@ -744,11 +787,11 @@ export default function EditorPage() {
 
         {canExport && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={busyAction === 'export'}>
-              <FileDown className="mr-1 h-4 w-4" /> DOCX
+            <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={exportingFmt !== null}>
+              {exportingFmt === 'docx' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} DOCX
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={busyAction === 'export'}>
-              <FileDown className="mr-1 h-4 w-4" /> PDF
+            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={exportingFmt !== null}>
+              {exportingFmt === 'pdf' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />} PDF
             </Button>
           </div>
         )}
@@ -785,7 +828,13 @@ export default function EditorPage() {
                 >
                   <div className="relative mb-1.5 h-24 overflow-hidden rounded-lg bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={pageThumb(p)} alt={`Page ${p.page_number}`} className="h-full w-full object-cover" />
+                    <img
+                      src={cloudinaryUrl(pageThumb(p), TX_THUMB)}
+                      alt={`Page ${p.page_number}`}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                     <span className="absolute left-1.5 top-1.5 rounded bg-black/50 px-1.5 font-mono text-[9px] font-bold text-white">
                       P.{p.page_number}
                     </span>
@@ -970,21 +1019,37 @@ export default function EditorPage() {
                     </div>
                   ) : hasDenoised ? (
                     <div className="space-y-2">
-                      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Drag to compare — before / after
-                        {activePage.denoise_version > 0 && ` · v${activePage.denoise_version}`}
-                      </p>
-                      <BeforeAfterCompare before={activePage.original_url} after={activePage.denoised_url!} />
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Drag to compare — before / after
+                          {activePage.denoise_version > 0 && ` · v${activePage.denoise_version}`}
+                        </p>
+                        {/* Open the untransformed (full-resolution) images. The
+                            canvas above is downscaled for speed; these are the
+                            originals at native size. */}
+                        <div className="flex items-center gap-3">
+                          <ViewOriginalLink url={activePage.original_url} label="Ảnh gốc" />
+                          <ViewOriginalLink url={activePage.denoised_url} label="Ảnh đã xử lý" />
+                        </div>
+                      </div>
+                      <BeforeAfterCompare
+                        before={cloudinaryUrl(activePage.original_url, TX_CANVAS)}
+                        after={cloudinaryUrl(activePage.denoised_url!, TX_CANVAS)}
+                      />
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Original{activePage.width && activePage.height ? ` · ${activePage.width}×${activePage.height}px` : ''}
-                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Original{activePage.width && activePage.height ? ` · ${activePage.width}×${activePage.height}px` : ''}
+                        </p>
+                        <ViewOriginalLink url={activePage.original_url} label="Xem ảnh gốc" />
+                      </div>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={activePage.original_url}
+                        src={cloudinaryUrl(activePage.original_url, TX_CANVAS)}
                         alt="Original"
+                        decoding="async"
                         className="max-h-[60vh] w-full rounded-lg bg-white object-contain"
                       />
                     </div>
@@ -1049,17 +1114,20 @@ export default function EditorPage() {
                           )}
                         </div>
                         {hasOcr ? (
-                          <CorrectionReviewEditor
-                            value={p.tiptap_json}
-                            lowConfidenceWords={
-                              p.id === activePageId
-                                ? activeLowConfWords
-                                : (ocrByPage[p.id]?.low_confidence_words ?? [])
-                            }
-                            revision={revisionByPage[p.id] ?? 0}
-                            editable
-                            onSave={(tiptap) => handleSaveTiptap(p.id, tiptap)}
-                          />
+                          p.id === activePageId ? (
+                            <CorrectionReviewEditor
+                              value={p.tiptap_json}
+                              lowConfidenceWords={activeLowConfWords}
+                              revision={revisionByPage[p.id] ?? 0}
+                              editable
+                              pageId={p.id}
+                              onSave={handleSaveTiptap}
+                            />
+                          ) : (
+                            /* Non-active page: cheap read-only render — click to
+                               edit (which makes it the active page). */
+                            <StaticPageText doc={p.tiptap_json} />
+                          )
                         ) : (
                           /* Page clicked but not OCR'd yet — guide the user to run OCR. */
                           <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
@@ -1273,17 +1341,17 @@ export default function EditorPage() {
                   className="flex-1"
                   variant="outline"
                   onClick={() => handleExport('docx')}
-                  disabled={!canExport || busyAction === 'export'}
+                  disabled={!canExport || exportingFmt !== null}
                 >
-                  {busyAction === 'export' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
+                  {exportingFmt === 'docx' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
                   Word
                 </Button>
                 <Button
                   className="flex-1"
                   onClick={() => handleExport('pdf')}
-                  disabled={!canExport || busyAction === 'export'}
+                  disabled={!canExport || exportingFmt !== null}
                 >
-                  {busyAction === 'export' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
+                  {exportingFmt === 'pdf' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />}
                   PDF
                 </Button>
               </div>

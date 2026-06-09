@@ -33,8 +33,16 @@ class Settings(BaseSettings):
     # CORS — comma-separated list of allowed origins for the frontend dev server
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
-    # Uploads / storage
-    MAX_UPLOAD_SIZE_MB: int = 20
+    # Supabase — used ONLY to verify the OAuth (Google) access token the frontend
+    # obtains via supabase-js. The backend stays the single source of authz: it
+    # bridges a valid Supabase session into its own access/refresh tokens.
+    # Leave blank to disable the /auth/oauth/google endpoint.
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+
+    # Uploads / storage — max accepted image size, in MB. The authoritative
+    # check (see endpoints/uploads.py). Override per environment via .env.
+    MAX_UPLOAD_SIZE_MB: int = 5
     ALLOWED_IMAGE_TYPES: str = "image/jpeg,image/png,image/webp,image/tiff,image/bmp"
     # Used by the local-disk storage fallback when Cloudinary is not configured.
     LOCAL_STORAGE_DIR: str = "storage_data"

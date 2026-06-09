@@ -18,8 +18,14 @@ class User(UUIDPKMixin, TimestampMixin, Base):
     __tablename__ = "users"
 
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Nullable: OAuth-only accounts (e.g. Google via Supabase) have no password.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+
+    # How the account authenticates: 'local' (email + password) or 'google'.
+    auth_provider: Mapped[str] = mapped_column(
+        String(20), default="local", server_default="local", nullable=False
+    )
 
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"), default=UserRole.viewer, nullable=False, index=True

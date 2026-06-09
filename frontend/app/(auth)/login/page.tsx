@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/lib/auth-store'
+import { GoogleButton } from '@/components/auth/google-button'
 import { Loader2, Mail, Lock } from 'lucide-react'
 
 function LoginForm() {
@@ -130,6 +131,14 @@ function LoginForm() {
             )}
           </Button>
         </form>
+
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-muted-foreground text-xs uppercase tracking-wide">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <GoogleButton next={nextUrl} />
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
           {"Don't have an account?"}{' '}

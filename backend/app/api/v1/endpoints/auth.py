@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
+from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -21,6 +23,7 @@ from app.schemas.auth import (
     DevLoginIn,
     LoginIn,
     LogoutIn,
+    OAuthGoogleIn,
     RefreshIn,
     RegisterIn,
     TokenOut,
@@ -79,10 +82,84 @@ def register(payload: RegisterIn, request: Request, db: Session = Depends(get_db
 @router.post("/login", response_model=AuthSessionOut)
 def login(payload: LoginIn, request: Request, db: Session = Depends(get_db)) -> AuthSessionOut:
     user = db.query(User).filter(User.email == payload.email).first()
-    if user is None or not verify_password(payload.password, user.password_hash):
+    # `password_hash is None` => an OAuth-only account; reject the same way as a
+    # wrong password so we don't leak which emails are Google-only.
+    if user is None or user.password_hash is None or not verify_password(
+        payload.password, user.password_hash
+    ):
         raise AuthenticationError("Invalid email or password")
     if user.status == UserStatus.banned:
         raise AuthenticationError("Account banned")
+    return _make_session(user, db, request)
+
+
+def _fetch_supabase_user(access_token: str) -> dict[str, Any]:
+    """Verify a Supabase access token by asking Supabase who it belongs to.
+
+    Using the GoTrue `/auth/v1/user` endpoint (rather than locally decoding the
+    JWT) means we never have to manage Supabase's signing keys — Supabase is the
+    authority on whether the token is valid and unexpired.
+    """
+    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "Google sign-in is not configured"
+        )
+    url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/user"
+    try:
+        resp = httpx.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "apikey": settings.SUPABASE_ANON_KEY,
+            },
+            timeout=10.0,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "Could not reach the auth provider"
+        ) from exc
+    if resp.status_code != status.HTTP_200_OK:
+        raise AuthenticationError("Invalid or expired Google session")
+    return resp.json()
+
+
+@router.post("/oauth/google", response_model=AuthSessionOut)
+def oauth_google(
+    payload: OAuthGoogleIn, request: Request, db: Session = Depends(get_db)
+) -> AuthSessionOut:
+    """Bridge a Supabase Google session into a native session.
+
+    The frontend completes the Google OAuth dance via supabase-js and posts the
+    resulting Supabase access token here. We verify it, get-or-create the matching
+    `users` row, then mint our own access + refresh tokens — so roles, status and
+    refresh-token rotation stay owned by this backend.
+    """
+    info = _fetch_supabase_user(payload.access_token)
+
+    email = info.get("email")
+    if not email:
+        raise AuthenticationError("Google account did not provide an email")
+
+    metadata = info.get("user_metadata") or {}
+    full_name = metadata.get("full_name") or metadata.get("name")
+
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        user = User(
+            email=email,
+            password_hash=None,
+            full_name=full_name,
+            role=UserRole.viewer,
+            status=UserStatus.active,
+            auth_provider="google",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    if user.status == UserStatus.banned:
+        raise AuthenticationError("Account banned")
+
     return _make_session(user, db, request)
 
 

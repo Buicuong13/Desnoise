@@ -15,6 +15,13 @@ class LoginIn(BaseModel):
     password: str
 
 
+class OAuthGoogleIn(BaseModel):
+    """Frontend obtains this from supabase-js after the Google OAuth redirect; the
+    backend verifies it against Supabase and bridges it to its own session."""
+
+    access_token: str
+
+
 class TokenOut(BaseModel):
     access_token: str
     refresh_token: str | None = None

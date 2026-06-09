@@ -35,6 +35,19 @@ export function login(payload: LoginPayload): Promise<AuthSession> {
   })
 }
 
+/**
+ * Exchange a Supabase Google session (obtained client-side via supabase-js) for
+ * a native backend session. The backend verifies the token, upserts the user,
+ * and returns the same `AuthSession` shape as `login`/`register`.
+ */
+export function oauthGoogle(supabaseAccessToken: string): Promise<AuthSession> {
+  return apiRequest<AuthSession>('/api/v1/auth/oauth/google', {
+    method: 'POST',
+    body: { access_token: supabaseAccessToken },
+    auth: false,
+  })
+}
+
 export function logout(): Promise<{ status: string }> {
   return apiRequest<{ status: string }>('/api/v1/auth/logout', {
     method: 'POST',

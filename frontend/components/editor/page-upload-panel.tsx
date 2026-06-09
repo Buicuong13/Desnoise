@@ -15,7 +15,7 @@
  * parent supplies the surrounding Card chrome (and, for `new`, the title input).
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useDropzone } from 'react-dropzone'
+import { useDropzone, type FileRejection } from 'react-dropzone'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -25,6 +25,14 @@ import { Upload, FileImage, X, Loader2, Wand2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUploadStore } from '@/lib/upload-store'
 import type { ApiPage } from '@/lib/api/types'
+
+/**
+ * Max accepted image size, in MB. Single source of truth for the client-side
+ * limit — change it via NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB (defaults to 5). Keep in
+ * sync with the backend's MAX_UPLOAD_SIZE_MB, which is the authoritative check.
+ */
+const MAX_UPLOAD_SIZE_MB = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB) || 5
+const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 export type UploadPanelMode =
   | { kind: 'new'; title: string }
@@ -44,6 +52,7 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
   const upload = useUploadStore()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const [rejectError, setRejectError] = useState<string | null>(null)
   const completedRef = useRef(false)
 
   const onDrop = useCallback(
@@ -52,6 +61,7 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
       if (!selected) return
       // New file = fresh attempt. Drop any leftover store state.
       upload.reset()
+      setRejectError(null)
       completedRef.current = false
       setFile(selected)
       const reader = new FileReader()
@@ -61,8 +71,20 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
     [upload],
   )
 
+  // react-dropzone silently drops files that exceed maxSize / wrong type, so we
+  // surface a clear reason here instead of the picker appearing to do nothing.
+  const onDropRejected = useCallback((rejections: FileRejection[]) => {
+    const tooBig = rejections.some((r) => r.errors.some((e) => e.code === 'file-too-large'))
+    setRejectError(
+      tooBig
+        ? `File too large — max ${MAX_UPLOAD_SIZE_MB}MB.`
+        : 'Unsupported file type. Use JPG / PNG / WEBP / TIFF / BMP.',
+    )
+  }, [])
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: {
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
@@ -71,13 +93,14 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
       'image/bmp': ['.bmp'],
     },
     maxFiles: 1,
-    maxSize: 20 * 1024 * 1024,
+    maxSize: MAX_UPLOAD_SIZE_BYTES,
     disabled,
   })
 
   const reset = useCallback(() => {
     setFile(null)
     setPreview(null)
+    setRejectError(null)
     upload.reset()
   }, [upload])
 
@@ -130,6 +153,14 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
         </Alert>
       )}
 
+      {rejectError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Can&apos;t use this file</AlertTitle>
+          <AlertDescription>{rejectError}</AlertDescription>
+        </Alert>
+      )}
+
       {!file && !isBusy ? (
         <div
           {...getRootProps()}
@@ -153,7 +184,7 @@ export function PageUploadPanel({ mode, onComplete, disabled, disabledReason }: 
                 {isDragActive ? 'Drop your file here' : 'Drag & drop a page image'}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                or click to browse · JPG / PNG / WEBP / TIFF / BMP · max 20MB
+                or click to browse · JPG / PNG / WEBP / TIFF / BMP · max {MAX_UPLOAD_SIZE_MB}MB
               </p>
             </div>
           </motion.div>

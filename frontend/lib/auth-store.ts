@@ -38,6 +38,8 @@ interface AuthActions {
   /** Re-fetch the current user (e.g. after an upload changes `images_used`). */
   refreshUser: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
+  /** Bridge a Supabase Google session into a native backend session. */
+  loginWithGoogle: (supabaseAccessToken: string) => Promise<void>
   register: (email: string, password: string, fullName?: string) => Promise<void>
   logout: () => Promise<void>
   clearError: () => void
@@ -103,6 +105,18 @@ export const useAuth = create<AuthStore>((set) => ({
       applySession(set, session)
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Login failed'
+      set({ isLoading: false, error: message })
+      throw err
+    }
+  },
+
+  loginWithGoogle: async (supabaseAccessToken) => {
+    set({ isLoading: true, error: null })
+    try {
+      const session = await api.auth.oauthGoogle(supabaseAccessToken)
+      applySession(set, session)
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Google sign-in failed'
       set({ isLoading: false, error: message })
       throw err
     }
