@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1
+#
+# Celery worker image — runs on RunPod (GPU). This is where the AI actually
+# runs: denoise (TensorFlow), classifier (Torch), layout (DocLayout-YOLO), and
+# Tesseract OCR. The model weights (~106 MB) are baked in from app/checkpoints/.
+#
+# Base provides CUDA 12.3 + cuDNN runtime. The NVIDIA *driver* is supplied by
+# the RunPod host at runtime; we only need the CUDA user-space libs here.
+# TensorFlow and Torch both load CUDA from their pip wheels, so we don't compile
+# anything CUDA-related ourselves.
+#
+FROM nvidia/cuda:12.3.2-cudnn9-runtime-ubuntu22.04
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Python 3.10 (Ubuntu 22.04 default), Tesseract with Vietnamese + English
+# language packs, and the opencv runtime libs.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 python3-pip python3-dev \
+        tesseract-ocr tesseract-ocr-vie tesseract-ocr-eng \
+        libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3 /usr/bin/python
+
+WORKDIR /app
+
+COPY requirements.txt .
+# Install pinned deps, then swap the CPU TensorFlow for the CUDA build (same
+# version, so nothing else shifts). numpy stays pinned at 1.26.4 by the file.
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    && pip install "tensorflow[and-cuda]==2.17.0"
+
+COPY . .
+
+# Tesseract is on PATH inside the image; use the GPU for the layout detector.
+ENV TESSERACT_CMD=tesseract \
+    LAYOUT_DEVICE=cuda \
+    CELERY_TASK_ALWAYS_EAGER=false
+
+# This pod is the ONLY worker (no worker runs on AWS). It runs TWO processes so
+# payment/llm never wait behind a long denoise/OCR job:
+#   1) GPU queues — solo pool = exactly ONE model copy in GPU memory.
+#   2) payment + llm — prefork -c 4 = parallel, no GPU, network-bound.
+# The first runs in the background (&); the second stays in the foreground so the
+# container's lifecycle follows it.
+CMD ["sh", "-c", "celery -A app.workers.celery_app worker -Q denoise_queue,classify_queue,ocr_queue -P solo --loglevel=info & celery -A app.workers.celery_app worker -Q payment_queue,llm_queue -c 4 --loglevel=info"]

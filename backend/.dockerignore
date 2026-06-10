@@ -1,0 +1,25 @@
+# Never ship the local virtualenv, caches, secrets, or local storage into images.
+.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets — env files are injected at runtime, not baked into the image.
+.env
+.env.*
+!.env.*.example
+
+# Local-disk storage fallback (prod uses Cloudinary).
+storage_data/
+
+# Dev noise
+tests/
+*.md
+.git/
+.gitignore
+
+# NOTE: app/checkpoints/ is intentionally NOT ignored — the worker image needs
+# the model weights (~106 MB) baked in.

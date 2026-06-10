@@ -1,0 +1,30 @@
+name: denoise-prod
+
+# Production stack for a single AWS EC2 host (git clone + docker compose up).
+# It runs ONLY the things that live on AWS:
+#   - api        : the FastAPI HTTP server
+#   - worker-cpu : the payment + llm worker (no GPU needed)
+#
+# It deliberately does NOT run postgres/redis — production uses Supabase
+# (Postgres) and Upstash (Redis) via .env.production. The GPU worker
+# (denoise/classify/ocr) runs SEPARATELY on RunPod, not here.
+#
+# IMPORTANT: .env.production is gitignored, so `git clone` will NOT bring it.
+# Copy/scp it onto the EC2 host (next to this file) before `docker compose up`.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: denoise-api:prod          # build once, reused by worker-cpu below
+    container_name: denoise_api
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    # Run migrations against Supabase (no-op if already at head), then serve.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+
+

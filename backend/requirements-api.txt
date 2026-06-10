@@ -1,0 +1,44 @@
+# Slim dependency set for the API image (AWS, CPU). It is requirements.txt MINUS
+# the AI model libraries, which the API never imports at startup (verified: the
+# denoise/classify model loaders and the OCR engines are imported lazily inside
+# functions that only run in the Celery worker). Removing them cuts the image
+# from ~12.6 GB to a few hundred MB.
+#
+# REMOVED (kept ONLY in the full requirements.txt used by Dockerfile.worker):
+#   tensorflow==2.17.0      — denoise GAN (worker only)
+#   torch==2.4.1            — classifier + pulls ~3.3 GB of CUDA wheels (worker only)
+#   torchvision==0.19.1     — classifier transforms (worker only)
+#   doclayout-yolo==0.0.3   — layout detector, pulls ultralytics/scipy (worker only)
+#
+# KEPT langchain* — llm_correction_service imports langchain_openai at module load,
+# so the API process needs it even though the LLM call runs in the worker.
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+email-validator==2.2.0
+pydantic-settings==2.5.2
+sqlalchemy==2.0.35
+psycopg2-binary==2.9.9
+alembic==1.13.3
+python-multipart==0.0.12
+python-jose[cryptography]==3.3.0
+passlib[argon2]==1.7.4
+argon2-cffi==23.1.0
+celery==5.4.0
+redis==5.1.0
+cloudinary==1.41.0
+pillow==10.4.0
+opencv-python==4.10.0.84
+numpy==1.26.4
+pytesseract==0.3.13
+langchain==0.3.3
+langchain-openai==0.2.2
+langchain-core==0.3.10
+python-docx==1.1.2
+docx2pdf==0.1.8
+reportlab==4.2.5
+slowapi==0.1.9
+httpx==0.27.2
+python-dotenv==1.0.1
+stripe==11.1.0

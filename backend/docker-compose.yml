@@ -29,5 +29,33 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: denoise_api
+    # Secrets (Cloudinary, OpenAI, Supabase OAuth, Stripe...) come from .env.
+    # The DB/Redis URLs below OVERRIDE .env to point at the in-compose services
+    # (service name = hostname inside the compose network; use container ports,
+    # not the host-mapped ones).
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://denoise:denoise@postgres:5432/denoise_db
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      REDIS_URL: redis://redis:6379/0
+      # API must offload to the worker, never run models in-process.
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    # Apply DB migrations, then start the server (fresh compose DB is empty).
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   pgdata:

@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1
+#
+# FastAPI API image — runs on AWS (App Runner / ECS Fargate, CPU only).
+# This process NEVER loads the AI models: every heavy task is pushed to the
+# Celery worker over Redis (as long as CELERY_TASK_ALWAYS_EAGER=false). It uses
+# the SLIM requirements-api.txt (no tensorflow/torch/doclayout-yolo) — those are
+# imported lazily and only ever run in the worker, so the API doesn't need them.
+#
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# opencv needs libGL + glib at import time; curl is for the healthcheck.
+# (psycopg2-binary bundles libpq, so no postgres client lib needed.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgl1 libglib2.0-0 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements-api.txt .
+RUN pip install --upgrade pip && pip install -r requirements-api.txt
+
+COPY . .
+
+# Safety: the API must offload to the worker, never run tasks in-process.
+ENV CELERY_TASK_ALWAYS_EAGER=false
+
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD curl -fsS http://localhost:8000/healthz || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

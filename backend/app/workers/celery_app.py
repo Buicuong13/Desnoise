@@ -4,6 +4,8 @@ Set ``CELERY_TASK_ALWAYS_EAGER=true`` in the environment to run tasks
 synchronously in-process (no Redis broker / worker required) — useful for
 testing the denoise pipeline through the HTTP API.
 """
+import ssl
+
 from celery import Celery
 
 from app.core.config import settings
@@ -22,6 +24,14 @@ celery_app.conf.update(
     task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
     task_eager_propagates=settings.CELERY_TASK_ALWAYS_EAGER,
 )
+
+# Upstash / managed Redis dùng TLS qua scheme rediss://. Celery không tự kết nối
+# nếu chưa khai báo ssl options. Cert do CA công khai cấp nên yêu cầu verify.
+# redis:// (local docker) không bị ảnh hưởng.
+if settings.CELERY_BROKER_URL.startswith("rediss://"):
+    celery_app.conf.broker_use_ssl = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
+if settings.CELERY_RESULT_BACKEND.startswith("rediss://"):
+    celery_app.conf.redis_backend_use_ssl = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
 
 # Route each task to its own queue so a worker can be sized per workload: heavy
 # CPU/GPU tasks (denoise) get a small pool, network-bound ones (LLM) a bigger
