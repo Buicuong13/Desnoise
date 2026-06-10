@@ -11,8 +11,13 @@
  * of the domain modules in `lib/api/*`) so auth and errors stay consistent.
  */
 
-export const API_BASE_URL =
+// In the browser, use an empty base URL so all /api/v1/* calls are same-origin.
+// next.config.mjs rewrites them to the backend, eliminating mixed-content errors
+// and CORS issues regardless of how NEXT_PUBLIC_API_URL is configured.
+// Server-side (SSR/API routes) uses the full backend URL directly.
+const _rawApiUrl =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:8000'
+export const API_BASE_URL = typeof window !== 'undefined' ? '' : _rawApiUrl
 
 /**
  * Token is persisted as a cookie (not localStorage) so the Next.js middleware

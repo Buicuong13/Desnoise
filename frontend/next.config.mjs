@@ -12,6 +12,19 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Proxy /api/v1/* through the Next.js server so the browser always makes
+  // same-origin requests — eliminating mixed-content errors and CORS issues
+  // regardless of how NEXT_PUBLIC_API_URL is configured.
+  async rewrites() {
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:8000'
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${apiBase}/api/v1/:path*`,
+      },
+    ]
+  },
 }
 
 export default nextConfig
