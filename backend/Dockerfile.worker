@@ -36,6 +36,13 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
+# Checkpoints are intentionally excluded from Git but included in the local
+# Docker build context. Fail the build here if it was started from a clone or
+# CI workspace that does not have the model artifacts.
+RUN test -s app/checkpoints/classifier/best_mobilenetv3_small_document_classifier.pth \
+    && test -s app/checkpoints/denoising/best_generator.weights.h5 \
+    && test -s app/checkpoints/layout/doclayout_yolo_docstructbench_imgsz1024.pt
+
 # Tesseract is on PATH inside the image; use the GPU for the layout detector.
 ENV TESSERACT_CMD=tesseract \
     LAYOUT_DEVICE=cuda \

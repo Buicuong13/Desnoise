@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser
 from app.core.config import settings
 from app.core.exceptions import NotFound, QuotaExceeded, ValidationError
+from app.core.logging import get_logger
 from app.database.session import get_db
 from app.models.document import Document
 from app.models.enums import PageStatus, UserRole
@@ -25,9 +26,10 @@ from app.schemas.upload import (
 )
 from app.storage import get_storage
 from app.storage.cloudinary_backend import CloudinaryStorage
-from app.workers.classify_task import classify_page_task
+from app.workers.inference_dispatch import InferenceDispatchError, enqueue_inference_task
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 _SIGNATURE_TTL_SECONDS = 300
 
@@ -41,6 +43,21 @@ def _get_owned_document(doc_id: UUID, user, db: Session) -> Document:
     if doc is None or doc.user_id != user.id:
         raise NotFound("Workspace not found")
     return doc
+
+
+def _enqueue_classification_or_fail_open(page: Page, db: Session) -> None:
+    try:
+        enqueue_inference_task("classify", page_id=str(page.id))
+    except InferenceDispatchError:
+        logger.exception(
+            "Could not dispatch classification for page %s; accepting upload",
+            page.id,
+        )
+        page.status = PageStatus.uploaded
+        page.processing_error = None
+        page.doc_class = "unknown"
+        page.doc_class_confidence = 0.0
+        db.commit()
 
 
 @router.post("/uploads/signature", response_model=SignatureOut)
@@ -93,8 +110,8 @@ def register_upload(
     """Persist page metadata after a successful direct upload, then kick off the
     async document/non-document gate.
 
-    The page is created at `classifying` and a classify task is enqueued onto
-    the classify_queue worker; the frontend polls until it becomes `uploaded`
+    The page is created at `classifying` and a classify task is dispatched to
+    the configured inference worker; the frontend polls until it becomes `uploaded`
     (accepted) or `rejected` (not a document — quota is refunded by the worker).
     No auto-denoise — that stays a separate, user-triggered step.
     """
@@ -126,9 +143,9 @@ def register_upload(
     db.commit()
     db.refresh(page)
 
-    # Run the classifier in the background (classify_queue) so the model never
-    # runs in the API process. A rejected page refunds the quota spent above.
-    classify_page_task.delay(str(page.id))
+    # Run the classifier in the configured background inference worker so the
+    # model never runs in the API process. A rejection refunds the quota.
+    _enqueue_classification_or_fail_open(page, db)
     return page
 
 
@@ -185,5 +202,5 @@ def replace_upload(
     db.commit()
     db.refresh(page)
 
-    classify_page_task.delay(str(page.id))
+    _enqueue_classification_or_fail_open(page, db)
     return page

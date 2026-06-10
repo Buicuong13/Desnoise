@@ -29,3 +29,8 @@ class QuotaExceeded(AppError):
 class ValidationError(AppError):
     def __init__(self, detail: str = "Invalid input"):
         super().__init__(status.HTTP_400_BAD_REQUEST, detail)
+
+
+class ServiceUnavailable(AppError):
+    def __init__(self, detail: str = "Service temporarily unavailable"):
+        super().__init__(status.HTTP_503_SERVICE_UNAVAILABLE, detail)

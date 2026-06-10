@@ -6,14 +6,14 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser
-from app.core.exceptions import NotFound, ValidationError
+from app.core.exceptions import NotFound, ServiceUnavailable, ValidationError
 from app.database.session import get_db
 from app.models.document import Document
 from app.models.enums import PageStatus
 from app.models.page import Page
 from app.schemas.page import DenoiseIn, PageOut, PageStatusOut
 from app.storage import get_storage
-from app.workers.denoise_task import denoise_page_task
+from app.workers.inference_dispatch import InferenceDispatchError, enqueue_inference_task
 
 router = APIRouter()
 
@@ -64,7 +64,19 @@ def trigger_denoise(
     page.processing_error = None
     db.commit()
 
-    denoise_page_task.delay(str(page.id), source, opts.params)
+    try:
+        enqueue_inference_task(
+            "denoise",
+            page_id=str(page.id),
+            source=source,
+            params=opts.params,
+        )
+    except InferenceDispatchError as exc:
+        page.status = PageStatus.failed
+        page.processing_error = str(exc)[:2000]
+        db.commit()
+        raise ServiceUnavailable("Could not start the denoise job") from exc
+
     return {"page_id": str(page.id), "status": PageStatus.denoising.value}
 
 

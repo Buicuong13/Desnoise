@@ -3,7 +3,8 @@ name: denoise-prod
 # Production stack for a single AWS EC2 host (git clone + docker compose up).
 # It runs ONLY the things that live on AWS:
 #   - api        : the FastAPI HTTP server
-#   - worker-cpu : the payment + llm worker (no GPU needed)
+#   - worker-llm     : serialized LLM jobs (no GPU needed)
+#   - worker-payment : isolated payment follow-ups
 #
 # It deliberately does NOT run postgres/redis — production uses Supabase
 # (Postgres) and Upstash (Redis) via .env.production. The GPU worker
@@ -17,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: denoise-api:prod          # build once, reused by worker-cpu below
+    image: denoise-api:prod          # build once, reused by CPU workers below
     container_name: denoise_api
     restart: unless-stopped
     env_file:
@@ -27,4 +28,25 @@ services:
     ports:
       - "8000:8000"
 
+  worker-llm:
+    image: denoise-api:prod
+    container_name: denoise_worker_llm
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    # One page at a time prevents multiple tasks from exceeding a provider's
+    # account-wide concurrency limit. Each page can still batch its chunks
+    # according to LLM_MAX_CONCURRENCY / OLLAMA_MAX_CONCURRENCY.
+    command: celery -A app.workers.celery_app worker -Q llm_queue -c 1 --loglevel=info
+    depends_on:
+      - api
 
+  worker-payment:
+    image: denoise-api:prod
+    container_name: denoise_worker_payment
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: celery -A app.workers.celery_app worker -Q payment_queue -c 1 --loglevel=info
+    depends_on:
+      - api

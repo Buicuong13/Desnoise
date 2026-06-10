@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     # Handy for local testing of the denoise pipeline via Swagger/Postman.
     CELERY_TASK_ALWAYS_EAGER: bool = False
 
+    # Heavy inference dispatch. Local/dev keeps using Celery; production can
+    # submit classify/denoise/OCR jobs to a queue-based RunPod endpoint.
+    INFERENCE_BACKEND: Literal["celery", "runpod"] = "celery"
+    RUNPOD_ENDPOINT_ID: str = ""
+    RUNPOD_API_KEY: str = ""
+    RUNPOD_API_BASE_URL: str = "https://api.runpod.ai/v2"
+    RUNPOD_SUBMIT_TIMEOUT_SECONDS: float = 15.0
+    RUNPOD_EXECUTION_TIMEOUT_MS: int = 600_000
+    RUNPOD_JOB_TTL_MS: int = 3_600_000
+
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""

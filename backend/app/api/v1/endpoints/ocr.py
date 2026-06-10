@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser
-from app.core.exceptions import NotFound, ValidationError
+from app.core.exceptions import NotFound, ServiceUnavailable, ValidationError
 from app.database.session import get_db
 from app.models.document import Document
 from app.models.enums import PageStatus
@@ -13,7 +13,7 @@ from app.models.page import Page
 from app.schemas.ocr import LowConfidenceWord, OcrDocumentOut
 from app.schemas.page import PageOut, TiptapPatchIn
 from app.services.tiptap_service import tiptap_to_plain_text
-from app.workers.ocr_task import ocr_page_task
+from app.workers.inference_dispatch import InferenceDispatchError, enqueue_inference_task
 
 router = APIRouter()
 
@@ -40,12 +40,23 @@ def trigger_ocr(
         PageStatus.llm_done,
         PageStatus.reviewing,
         PageStatus.reviewed,
-        PageStatus.ocr_running,
         PageStatus.failed,
     ):
         raise ValidationError(f"Page must be denoised first (current status: {page.status.value})")
 
-    ocr_page_task.delay(str(page.id))
+    previous_status = page.status
+    page.status = PageStatus.ocr_running
+    page.processing_error = None
+    db.commit()
+
+    try:
+        enqueue_inference_task("ocr", page_id=str(page.id))
+    except InferenceDispatchError as exc:
+        page.status = previous_status
+        page.processing_error = str(exc)[:2000]
+        db.commit()
+        raise ServiceUnavailable("Could not start the OCR job") from exc
+
     return {"status": "enqueued", "page_id": str(page.id)}
 
 

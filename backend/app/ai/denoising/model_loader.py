@@ -39,6 +39,15 @@ def build_generator(input_size: tuple[int, int, int] = (256, 256, 1), biggest_la
             "TensorFlow is required for denoising. Install backend requirements first."
         ) from exc
 
+    # This worker also runs the PyTorch layout model. Without memory growth,
+    # TensorFlow can reserve nearly all VRAM on first use and make a later OCR
+    # job fail even though both models fit when memory is allocated on demand.
+    for gpu in tf.config.list_physical_devices("GPU"):
+        try:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError:
+            logger.warning("Could not enable TensorFlow memory growth for %s", gpu)
+
     tf.keras.backend.clear_session()
 
     inputs = Input(input_size)

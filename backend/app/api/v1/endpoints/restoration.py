@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.ai.llm.provider import resolve_llm_provider
 from app.api.deps import CurrentUser
-from app.core.exceptions import NotFound, ValidationError
+from app.core.exceptions import NotFound, ServiceUnavailable, ValidationError
 from app.database.session import get_db
 from app.models.document import Document
 from app.models.enums import PageStatus
@@ -40,13 +40,25 @@ def trigger_llm_correction(
     effective provider so the client can never escalate to a paid model.
     """
     page = _get_owned_page(page_id, user, db)
-    if page.status not in (PageStatus.ocr_done, PageStatus.llm_done, PageStatus.llm_running, PageStatus.failed):
+    if page.status not in (PageStatus.ocr_done, PageStatus.llm_done, PageStatus.failed):
         raise ValidationError(
             f"OCR must complete before LLM correction (current status: {page.status.value})"
         )
 
     provider = resolve_llm_provider(user.role, payload.provider)
-    llm_correct_page_task.delay(str(page.id), user.role.value, provider.value)
+    previous_status = page.status
+    page.status = PageStatus.llm_running
+    page.processing_error = None
+    db.commit()
+
+    try:
+        llm_correct_page_task.delay(str(page.id), user.role.value, provider.value)
+    except Exception as exc:  # noqa: BLE001 - broker/network submission failure
+        page.status = previous_status
+        page.processing_error = str(exc)[:2000]
+        db.commit()
+        raise ServiceUnavailable("Could not start the LLM correction job") from exc
+
     return {
         "status": "enqueued",
         "page_id": str(page.id),
