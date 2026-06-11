@@ -219,3 +219,79 @@ export interface ApiFinalText {
   text: string
   blurred: boolean
 }
+
+// ── Admin panel ──────────────────────────────────────────────────────────────
+export interface AdminUser {
+  id: string
+  email: string
+  full_name: string | null
+  role: UserRole
+  status: UserStatus
+  auth_provider: string
+  images_used: number
+  documents_count: number
+  created_at: string
+  last_login_at: string | null
+}
+
+export interface AdminUserList {
+  items: AdminUser[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface AdminDashboardStats {
+  total_users: number
+  new_users_30d: number
+  total_documents: number
+  total_pages: number
+  pages_processed: number
+  avg_processing_seconds: number | null
+  success_rate: number
+  revenue_vnd: number
+}
+
+export interface AdminActivityItem {
+  id: number
+  actor_email: string | null
+  action: string
+  target_type: string | null
+  target_id: string | null
+  created_at: string
+}
+
+export interface AdminDailyPoint {
+  /** ISO date (YYYY-MM-DD), zero-filled across the last 30 days. */
+  date: string
+  created: number
+  completed: number
+}
+
+export interface AdminDashboard {
+  stats: AdminDashboardStats
+  recent_users: AdminUser[]
+  recent_activity: AdminActivityItem[]
+  daily_pages: AdminDailyPoint[]
+}
+
+export interface AdminHistoryItem {
+  page_id: string
+  document_id: string
+  document_title: string
+  owner_email: string
+  page_number: number
+  status: PageStatus
+  denoise_version: number
+  ocr_done: boolean
+  corrections_count: number
+  created_at: string
+  completed_at: string | null
+}
+
+export interface AdminHistoryList {
+  items: AdminHistoryItem[]
+  total: number
+  page: number
+  page_size: number
+}

@@ -6,6 +6,7 @@
  *   const docs = await api.documents.list()
  *   await api.ocr.trigger(pageId)
  */
+import * as admin from './admin'
 import * as auth from './auth'
 import * as billing from './billing'
 import * as corrections from './corrections'
@@ -60,6 +61,12 @@ export const api = {
     me: billing.getMySubscription,
     payments: billing.listPayments,
     checkout: billing.createCheckout,
+  },
+  admin: {
+    dashboard: admin.getDashboard,
+    listUsers: admin.listUsers,
+    updateUser: admin.updateUser,
+    listHistory: admin.listHistory,
   },
 }
 
