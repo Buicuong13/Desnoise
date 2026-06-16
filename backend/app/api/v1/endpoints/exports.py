@@ -4,6 +4,7 @@ Paid users / admins only — the `PaidUser` dependency blocks viewers at the
 API layer (acceptance §13), not just in the UI.
 """
 import io
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -44,6 +45,12 @@ def _export(doc_id: UUID, fmt: ExportFormat, user, db: Session):
 
     data = build_docx(pages) if fmt == ExportFormat.docx else build_pdf(pages)
     filename = f"{doc.title or 'document'}_{doc_id}".replace(" ", "_")
+    full_name = f"{filename}.{fmt.value}"
+    # HTTP headers are latin-1 only, but a Vietnamese title (e.g. "ệ") isn't. Send
+    # an ASCII-safe `filename=` fallback plus an RFC 5987 `filename*` with the real
+    # UTF-8 name (percent-encoded) so the browser shows the proper name.
+    ascii_name = full_name.encode("ascii", "ignore").decode() or f"document.{fmt.value}"
+    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(full_name)}"
 
     # Stream the file straight to the browser — no Cloudinary upload, no stored
     # copy. The file is built in memory and sent once, so the API stays light
@@ -64,7 +71,7 @@ def _export(doc_id: UUID, fmt: ExportFormat, user, db: Session):
     return StreamingResponse(
         io.BytesIO(data),
         media_type=_MEDIA[fmt],
-        headers={"Content-Disposition": f'attachment; filename="{filename}.{fmt.value}"'},
+        headers={"Content-Disposition": disposition},
     )
 
 
