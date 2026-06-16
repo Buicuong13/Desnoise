@@ -54,4 +54,6 @@ ENV TESSERACT_CMD=tesseract \
 #   2) payment + llm — prefork -c 4 = parallel, no GPU, network-bound.
 # The first runs in the background (&); the second stays in the foreground so the
 # container's lifecycle follows it.
-CMD ["sh", "-c", "celery -A app.workers.celery_app worker -Q denoise_queue,classify_queue,ocr_queue -P solo --loglevel=info & celery -A app.workers.celery_app worker -Q payment_queue,llm_queue -c 4 --loglevel=info"]
+# --without-gossip/mingle/heartbeat: kill the idle inter-worker polling that
+# otherwise burns the Upstash Redis command quota (reads ≫ writes when idle).
+CMD ["sh", "-c", "celery -A app.workers.celery_app worker -Q denoise_queue,classify_queue,ocr_queue -P solo --without-gossip --without-mingle --without-heartbeat --loglevel=info & celery -A app.workers.celery_app worker -Q payment_queue,llm_queue -c 4 --without-gossip --without-mingle --without-heartbeat --loglevel=info"]

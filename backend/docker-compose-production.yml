@@ -37,7 +37,9 @@ services:
     # One page at a time prevents multiple tasks from exceeding a provider's
     # account-wide concurrency limit. Each page can still batch its chunks
     # according to LLM_MAX_CONCURRENCY / OLLAMA_MAX_CONCURRENCY.
-    command: celery -A app.workers.celery_app worker -Q llm_queue -c 1 --loglevel=info
+    # --without-* disables gossip/mingle/heartbeat: inter-worker chatter that
+    # polls Redis constantly even when idle (the bulk of the Upstash read quota).
+    command: celery -A app.workers.celery_app worker -Q llm_queue -c 1 --without-gossip --without-mingle --without-heartbeat --loglevel=info
     depends_on:
       - api
 
@@ -47,6 +49,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env.production
-    command: celery -A app.workers.celery_app worker -Q payment_queue -c 1 --loglevel=info
+    command: celery -A app.workers.celery_app worker -Q payment_queue -c 1 --without-gossip --without-mingle --without-heartbeat --loglevel=info
     depends_on:
       - api

@@ -42,7 +42,7 @@ import { getWorkspaceColor, getWorkspaceIcon } from '@/lib/workspace-icons'
 import { useAuth } from '@/lib/auth-store'
 import { useUploadStore } from '@/lib/upload-store'
 import { api, ApiError } from '@/lib/api'
-import { downloadImage } from '@/lib/download'
+import { downloadImage, saveBlob, safeFilename } from '@/lib/download'
 import type {
   ApiCorrection,
   ApiDocument,
@@ -80,13 +80,15 @@ const pageHasContent = (p: ApiPage) => HAS_OCR.includes(p.status) || !!p.tiptap_
 function StaticPageText({ doc }: { doc: TiptapDoc | null }) {
   const paragraphs = doc?.content ?? []
   return (
-    <div className="tiptap-editor max-h-[560px] overflow-auto rounded-xl border border-border bg-white p-4">
+    <div className="tiptap-editor max-h-[560px] overflow-auto rounded-xl border border-border bg-white p-4 leading-[1.7]">
       {paragraphs.length === 0 ? (
         <p className="text-sm text-muted-foreground">(empty)</p>
       ) : (
         paragraphs.map((node, i) => {
           const text = (node.content ?? []).map((c) => c.text ?? '').join('')
-          return <p key={i}>{text || ' '}</p>
+          // Match the live editor's paragraph spacing so a page doesn't "lose"
+          // its inter-paragraph gap when it switches from editor to static view.
+          return <p key={i} className="mb-3 last:mb-0">{text || ' '}</p>
         })
       )}
     </div>
@@ -549,11 +551,13 @@ export default function EditorPage() {
   const handleExport = async (fmt: 'docx' | 'pdf') => {
     setExportingFmt(fmt)
     try {
-      const res = fmt === 'docx' ? await api.exports.docx(docId) : await api.exports.pdf(docId)
-      if (res.file_url) {
-        window.open(res.file_url, '_blank', 'noopener,noreferrer')
-        toast.success(`Exported ${fmt.toUpperCase()}`)
-      }
+      const { blob, filename } = fmt === 'docx' ? await api.exports.docx(docId) : await api.exports.pdf(docId)
+      // Prefer the document title for the suggested name; fall back to the
+      // server-provided filename. saveBlob opens a native "Save As" picker
+      // (Chrome/Edge) so the user chooses where to download it.
+      const name = safeFilename(doc?.title ? `${doc.title}.${fmt}` : filename)
+      await saveBlob(blob, name)
+      toast.success(`Exported ${fmt.toUpperCase()}`)
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Export failed')
     } finally {

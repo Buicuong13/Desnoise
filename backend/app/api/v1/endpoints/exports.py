@@ -18,8 +18,6 @@ from app.models.enums import ExportFormat, PageStatus
 from app.models.export import Export
 from app.models.page import Page
 from app.services.export_service import build_docx, build_pdf
-from app.storage import get_storage
-from app.storage.cloudinary_backend import CloudinaryStorage
 
 router = APIRouter()
 
@@ -47,30 +45,22 @@ def _export(doc_id: UUID, fmt: ExportFormat, user, db: Session):
     data = build_docx(pages) if fmt == ExportFormat.docx else build_pdf(pages)
     filename = f"{doc.title or 'document'}_{doc_id}".replace(" ", "_")
 
-    storage = get_storage()
-    file_url: str | None = None
-    if isinstance(storage, CloudinaryStorage):
-        file_url = storage.upload_raw(
-            data, folder=f"documents/{doc_id}/exports", filename=filename, fmt=fmt.value
-        )
-
+    # Stream the file straight to the browser — no Cloudinary upload, no stored
+    # copy. The file is built in memory and sent once, so the API stays light
+    # (matters on the 2 GB AWS host). The Export row keeps an audit trail (size,
+    # time) but holds no download link; re-exporting is cheap.
     export = Export(
         document_id=doc_id,
         user_id=user.id,
         format=fmt,
-        file_url=file_url or "(streamed)",
+        file_url="(streamed)",
         file_size_kb=round(len(data) / 1024),
     )
     db.add(export)
     for page in pages:
         page.status = PageStatus.exported
     db.commit()
-    db.refresh(export)
 
-    if file_url:
-        return {"export_id": str(export.id), "format": fmt.value, "file_url": file_url}
-
-    # Local-storage fallback — stream the file directly.
     return StreamingResponse(
         io.BytesIO(data),
         media_type=_MEDIA[fmt],

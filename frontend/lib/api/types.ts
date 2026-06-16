@@ -208,12 +208,6 @@ export interface ApiCorrection {
   created_at: string
 }
 
-export interface ApiExportResult {
-  export_id: string
-  format: 'docx' | 'pdf'
-  file_url: string
-}
-
 export interface ApiFinalText {
   page_id: string
   text: string

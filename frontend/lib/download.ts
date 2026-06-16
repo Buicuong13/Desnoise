@@ -57,7 +57,23 @@ async function fetchImageBlob({ url, pageId, type = 'denoised' }: DownloadOpts):
   return res.blob()
 }
 
-async function saveBlob(blob: Blob, filename: string): Promise<void> {
+/** Map a file extension to a Save-As picker `types` entry so the native dialog
+ *  shows a sensible filter (PNG image / PDF document / Word document …). */
+function pickerTypes(filename: string) {
+  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase()
+  const map: Record<string, { description: string; mime: string }> = {
+    '.png': { description: 'PNG image', mime: 'image/png' },
+    '.pdf': { description: 'PDF document', mime: 'application/pdf' },
+    '.docx': {
+      description: 'Word document',
+      mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    },
+  }
+  const t = map[ext]
+  return t ? [{ description: t.description, accept: { [t.mime]: [ext] } }] : undefined
+}
+
+export async function saveBlob(blob: Blob, filename: string): Promise<void> {
   const picker = (window as unknown as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker
   // Preferred: native Save-As picker so the user chooses the folder (Chromium,
   // secure context only — requires the user gesture we already have from click).
@@ -65,7 +81,7 @@ async function saveBlob(blob: Blob, filename: string): Promise<void> {
     try {
       const handle = await picker({
         suggestedName: filename,
-        types: [{ description: 'PNG image', accept: { 'image/png': ['.png'] } }],
+        types: pickerTypes(filename),
       })
       const writable = await handle.createWritable()
       await writable.write(blob)

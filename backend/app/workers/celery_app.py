@@ -20,7 +20,17 @@ celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
-    task_track_started=True,
+    # Progress is tracked via `page.status` in Postgres — nobody reads Celery
+    # task results. Storing/tracking them only burns Redis commands (Upstash
+    # free tier = 500k/month), so turn both off.
+    task_track_started=False,
+    task_ignore_result=True,
+    result_backend=None,
+    # Celery's default redis transport polls the broker every 1s per worker and
+    # restores unacked messages just as often — that idle polling is what eats
+    # the Upstash quota (reads ≫ writes). Poll far less aggressively; jobs are
+    # user-triggered so a few seconds of pickup latency is fine.
+    broker_transport_options={"polling_interval": 10.0, "visibility_timeout": 3600},
     task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
     task_eager_propagates=settings.CELERY_TASK_ALWAYS_EAGER,
 )
