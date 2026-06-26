@@ -31,6 +31,12 @@ pytesseract==0.3.13
 # file (or pin `numpy==1.26.4` on the command line) so numpy stays on 1.26.4 —
 # never `pip install doclayout-yolo` on its own.
 doclayout-yolo==0.0.3
+# doclayout-yolo imports `from huggingface_hub import PyTorchModelHubMixin` at
+# load time but does NOT pin it, so a clean Docker build can end up without it →
+# import fails → the layout engine silently falls back to whole-page Tesseract
+# (no column/region segmentation). Pin it explicitly. No numpy dep, so it won't
+# disturb the numpy==1.26.4 / tensorflow constraint.
+huggingface_hub==0.25.2
 langchain==0.3.3
 langchain-openai==0.2.2
 langchain-core==0.3.10
