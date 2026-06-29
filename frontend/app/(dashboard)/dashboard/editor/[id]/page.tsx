@@ -1179,14 +1179,20 @@ export default function EditorPage() {
               <p className="text-sm text-muted-foreground">Upload a page to start the pipeline.</p>
             ) : (
               <>
-                {/* Capstone — restoration / recovery result of the whole pipeline */}
-                <RestorationScore
-                  score={activePage.recovery_score}
-                  before={activePage.ocr_conf_before}
-                  after={activePage.ocr_conf_after}
-                  status={status}
-                  hasDenoised={hasDenoised}
-                />
+                {/* Capstone — restoration / recovery result of the whole pipeline.
+                    Hidden while the "add page" uploader is open: `activePage` still
+                    points at the PREVIOUS page until the new upload registers, so
+                    showing its score here would look like the new page already has
+                    numbers. */}
+                {!showUpload && (
+                  <RestorationScore
+                    score={activePage.recovery_score}
+                    before={activePage.ocr_conf_before}
+                    after={activePage.ocr_conf_after}
+                    status={status}
+                    hasDenoised={hasDenoised}
+                  />
+                )}
 
                 {/* Step 1 — Denoise */}
                 <PipelineStep
