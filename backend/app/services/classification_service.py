@@ -111,6 +111,11 @@ def classify_page(page_id: str | UUID) -> None:
         page.doc_class_confidence = verdict["confidence"]
 
         if verdict["is_document"]:
+            # Seed the "before denoise" readability baseline now so the editor
+            # can show it the instant the page is accepted (we measure BEFORE
+            # flipping to `uploaded` so the number is already present in the same
+            # poll the frontend uses to detect acceptance). Best-effort.
+            _populate_before_metric(page)
             page.status = PageStatus.uploaded
             db.commit()
             logger.info("classify_page: page %s accepted as document", page_id)
@@ -134,6 +139,25 @@ def classify_page(page_id: str | UUID) -> None:
             db.commit()
     finally:
         db.close()
+
+
+def _populate_before_metric(page: Page) -> None:
+    """Best-effort: OCR the ORIGINAL (noisy) image to populate `ocr_conf_before`
+    — the "before denoise" readability score shown in the editor.
+
+    A failure here must never block accepting the upload — it's a bonus metric,
+    and the OCR step will compute it lazily later anyway if it's still missing.
+    """
+    try:
+        from app.services.ocr_service import measure_avg_confidence
+
+        page.ocr_conf_before = measure_avg_confidence(
+            page.cloudinary_public_id or page.original_url
+        )
+    except Exception:  # noqa: BLE001 - metric is best-effort only
+        logger.exception(
+            "Could not measure before-denoise confidence for page %s", page.id
+        )
 
 
 def _refund_quota(db, page: Page) -> None:

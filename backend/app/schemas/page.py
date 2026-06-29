@@ -26,6 +26,10 @@ class PageOut(BaseModel):
     ocr_plain_text: str | None = None
     tiptap_json: dict[str, Any] | None = None
     final_text: str | None = None
+    # Restoration metric (0..100), populated at OCR time. See Page model.
+    recovery_score: float | None = None
+    ocr_conf_before: float | None = None
+    ocr_conf_after: float | None = None
     processing_error: str | None
     completed_at: datetime | None
 

@@ -57,6 +57,17 @@ class Page(UUIDPKMixin, TimestampMixin, Base):
     # Final reviewed text (OCR + kept LLM corrections + manual edits) used by export.
     final_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Restoration / "recovery" metric (0..100). Computed at OCR time from the
+    # average per-word OCR confidence — a task-based proxy for how readable the
+    # pipeline made the page (we have no clean ground truth for a user upload).
+    #   recovery_score  = avg confidence on the OCR'd image (== ocr_conf_after)
+    #   ocr_conf_before = avg confidence OCR'ing the ORIGINAL (noisy) image once
+    #   ocr_conf_after  = avg confidence OCR'ing the current (denoised) image
+    # The before→after delta is the "pipeline improved readability by +N" story.
+    recovery_score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    ocr_conf_before: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    ocr_conf_after: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+
     status: Mapped[PageStatus] = mapped_column(
         Enum(PageStatus, name="page_status"),
         default=PageStatus.uploaded,

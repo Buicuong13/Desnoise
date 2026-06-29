@@ -83,6 +83,12 @@ export interface ApiPage {
   ocr_plain_text: string | null
   tiptap_json: TiptapDoc | null
   final_text: string | null
+  /** Restoration metric (0..100), populated at OCR time. See backend Page model.
+   *  `recovery_score` == `ocr_conf_after`; `ocr_conf_before` is the original
+   *  (noisy) image's readability, so after − before is the pipeline's gain. */
+  recovery_score: number | null
+  ocr_conf_before: number | null
+  ocr_conf_after: number | null
   processing_error: string | null
   completed_at: string | null
 }

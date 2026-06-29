@@ -36,6 +36,7 @@ import { CorrectionReviewModal } from '@/components/editor/correction-review-mod
 import { ProcessingIndicator } from '@/components/editor/processing-indicator'
 import { PageUploadPanel } from '@/components/editor/page-upload-panel'
 import { BeforeAfterCompare } from '@/components/editor/before-after-compare'
+import { RestorationScore } from '@/components/editor/restoration-score'
 import { cn } from '@/lib/utils'
 import { cloudinaryUrl, TX_THUMB, TX_CANVAS } from '@/lib/cloudinary'
 import { getWorkspaceColor, getWorkspaceIcon } from '@/lib/workspace-icons'
@@ -1178,6 +1179,15 @@ export default function EditorPage() {
               <p className="text-sm text-muted-foreground">Upload a page to start the pipeline.</p>
             ) : (
               <>
+                {/* Capstone — restoration / recovery result of the whole pipeline */}
+                <RestorationScore
+                  score={activePage.recovery_score}
+                  before={activePage.ocr_conf_before}
+                  after={activePage.ocr_conf_after}
+                  status={status}
+                  hasDenoised={hasDenoised}
+                />
+
                 {/* Step 1 — Denoise */}
                 <PipelineStep
                   step={1}

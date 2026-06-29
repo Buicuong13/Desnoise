@@ -36,6 +36,32 @@ def _iter_words(doc: OCRDocument):
                     yield line_no, word
 
 
+def _avg_confidence(doc: OCRDocument) -> float | None:
+    """Average per-word OCR confidence on a 0..100 scale (None if no words).
+
+    This is the "restoration / recovery" metric: the OCR engine reports how sure
+    it is about each word it read, and a cleaner image yields higher confidence.
+    """
+    confs = [word.confidence * 100 for _, word in _iter_words(doc)]
+    if not confs:
+        return None
+    return round(sum(confs) / len(confs), 2)
+
+
+def measure_avg_confidence(image_key: str) -> float | None:
+    """OCR a single image and return its average per-word confidence (0..100).
+
+    A lightweight, standalone version of the metric that doesn't persist any
+    layout/words — used to seed the "before denoise" readability baseline both
+    from the full OCR step and from the upload classifier (so the editor can
+    show it the moment a page is accepted, before any denoise).
+    """
+    storage = get_storage()
+    engine = get_ocr_service()
+    doc = engine.extract_document_layout(storage.download(image_key))
+    return _avg_confidence(doc)
+
+
 def ocr_page(page_id: str | UUID) -> None:
     """Run document-layout OCR on the page's denoised image (falls back to original)."""
     db = SessionLocal()
@@ -82,6 +108,29 @@ def ocr_page(page_id: str | UUID) -> None:
                 )
             )
             index += 1
+
+        # ── Restoration metric: "how readable did the pipeline make this page?"
+        # `after`  = avg confidence on the image we just OCR'd (denoised when set).
+        # `before` = avg confidence OCR'ing the ORIGINAL noisy image. The original
+        #   never changes, so we only pay for it ONCE per page (re-OCR keeps it).
+        #   A failure here must never fail the OCR itself — it's a bonus metric.
+        after_conf = _avg_confidence(doc)
+        page.ocr_conf_after = after_conf
+        page.recovery_score = after_conf
+
+        if page.ocr_conf_before is None:
+            source_is_original = not page.denoised_url
+            if source_is_original:
+                page.ocr_conf_before = after_conf
+            else:
+                try:
+                    original_key = page.cloudinary_public_id or page.original_url
+                    page.ocr_conf_before = measure_avg_confidence(original_key)
+                except Exception:  # noqa: BLE001 - metric is best-effort only
+                    logger.exception(
+                        "Could not OCR the original image for the before-metric (page %s)",
+                        page_id,
+                    )
 
         page.ocr_document_json = doc.model_dump()
         page.ocr_plain_text = doc.plain_text
